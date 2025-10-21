@@ -6,7 +6,7 @@ use App\Models\User;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-
+use Illuminate\Validation\Rule;
 
 class AuthController extends Controller
 {
@@ -17,6 +17,8 @@ class AuthController extends Controller
             'name'=>'required',
             'role'=>'required',
             'email'=>'required|email|unique:users',
+            'phone_number' => ['required', 'string', 'max:20', 'unique:users,phone_number'],
+            'role' => ['required', Rule::in([0, 1, 2])],
             'password'=>'required|confirmed'
         ]);
 

@@ -20,7 +20,15 @@ class User extends Authenticatable
      */
     protected $fillable = [
         'name',
+        'role',
         'email',
+        'phone_number',
+        'profile_image',
+        'address',
+        'gender',
+        'married_status',
+        'date_of_birth',
+        'passport_number',
         'password',
     ];
 
@@ -46,4 +54,9 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
+
+    public function lawyerProfile()
+{
+    return $this->hasOne(\App\Models\LawyerProfile::class, 'user_id');
+}
 }
