@@ -23,6 +23,8 @@ return new class extends Migration
             $table->string('reason_for_immigration');
             $table->timestamps();
         });
+
+
     }
 
     /**

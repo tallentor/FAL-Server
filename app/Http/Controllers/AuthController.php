@@ -15,7 +15,6 @@ class AuthController extends Controller
 
         $fields=$request->validate([
             'name'=>'required',
-            'role'=>'required',
             'email'=>'required|email|unique:users',
             'phone_number' => ['required', 'string', 'max:20', 'unique:users,phone_number'],
             'role' => ['required', Rule::in([0, 1, 2])],

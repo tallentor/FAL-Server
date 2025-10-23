@@ -11,11 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('assign_lawyers', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('case_id')->constrained('cases')->onDelete('cascade');
-            $table->foreignId('lawyer_id')->constrained('users')->onDelete('cascade');
-            $table->timestamps();
+        Schema::table('users', function (Blueprint $table) {
+            $table->string('nationality')->nullable()->after('gender');
         });
     }
 
@@ -24,6 +21,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('assign_lawyer');
+        Schema::table('users', function (Blueprint $table) {
+            $table->dropColumn('nationality');
+        });
     }
 };

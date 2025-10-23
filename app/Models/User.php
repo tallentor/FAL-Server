@@ -26,6 +26,7 @@ class User extends Authenticatable
         'profile_image',
         'address',
         'gender',
+        'nationality',
         'married_status',
         'date_of_birth',
         'passport_number',
@@ -55,8 +56,15 @@ class User extends Authenticatable
         ];
     }
 
-    public function lawyerProfile()
-{
-    return $this->hasOne(\App\Models\LawyerProfile::class, 'user_id');
-}
+    // Lawyer assigned cases
+    public function assignedCases()
+    {
+        return $this->hasMany(AssignLawyer::class, 'lawyer_id');
+    }
+
+    // Client’s own cases
+    public function cases()
+    {
+        return $this->hasMany(CaseModel::class, 'user_id');
+    }
 }
