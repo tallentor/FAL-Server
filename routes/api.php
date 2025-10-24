@@ -11,6 +11,7 @@ use App\Http\Controllers\User\ProfileController;
 use App\Http\Controllers\LawyerProfileController;
 use App\Http\Controllers\Lawyer\LawyerCaseController;
 use App\Http\Controllers\Admin\AssignLawyerController;
+use App\Http\Controllers\CalendarController;
 use App\Http\Controllers\Admin\CasesNotificationController;
 
 
@@ -19,8 +20,13 @@ Route::get('/user', function (Request $request) {
 })->middleware('auth:sanctum');
 
 Route::post('/register',[AuthController::class,'register']);
-Route::post('/login',[AuthController::class,'login']);
+Route::post('/login',[AuthController::class,'login'])->name('login');
 Route::post('/logout',[AuthController::class,'logout'])->middleware('auth:sanctum');
+
+
+Route::get('/approve-user', [AuthController::class, 'getPendingUsers']);
+Route::post('/approve-user/{id}', [AuthController::class, 'approveUser'])->middleware('auth:sanctum');
+Route::delete('/reject-user/{id}', [AuthController::class, 'rejectUser'])->middleware('auth:sanctum');
 
 
 
@@ -28,6 +34,7 @@ Route::post('/chat/send', [ChatController::class, 'sendMessage']);
 
 Route::apiResource('lawyer_profiles', LawyerProfileController::class);
 Route::apiResource('system_prompts', SystemPromptController::class);
+Route::apiResource('calendars', CalendarController::class);
 
 
 // Route::middleware('auth:sanctum')->get('/profile', [ProfileController::class, 'profile']);
