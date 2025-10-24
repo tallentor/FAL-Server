@@ -79,7 +79,7 @@ class CaseController extends Controller
 }
 
 
-    public function index1()
+    public function AllCases()
     {
         $cases = CaseModel::where('user_id', Auth::id())->get();
         $cases = CaseModel::all();

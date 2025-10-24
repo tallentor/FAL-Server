@@ -2,85 +2,115 @@
 
 namespace App\Http\Controllers;
 
+use Log;
+use Carbon\Carbon;
 use GuzzleHttp\Client;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 
 class ZoomController extends Controller
 {
-    // Step 1: Redirect user to Zoom authorization
-    public function authorizeApp()
-    {
-        $authorizeUrl = "https://zoom.us/oauth/authorize?response_type=code&client_id="
-            . env('ZOOM_CLIENT_ID')
-            . "&redirect_uri=" . urlencode(env('ZOOM_REDIRECT_URI'));
+    public function getAccessToken()
+{
+    $client = new \GuzzleHttp\Client();
 
-        return redirect()->away($authorizeUrl);
-    }
-
-    // Step 2: Handle Zoom callback and save access + refresh tokens
-    public function handleCallback(Request $request)
-    {
-        $code = $request->query('code');
-        $client = new Client();
-
+    try {
         $response = $client->post('https://zoom.us/oauth/token', [
             'headers' => [
-                'Authorization' => 'Basic ' . base64_encode(env('ZOOM_CLIENT_ID') . ':' . env('ZOOM_CLIENT_SECRET')),
+                'Authorization' => 'Basic ' . base64_encode(
+                    config('zoom.client_id') . ':' . config('zoom.client_secret')
+                ),
             ],
             'form_params' => [
-                'grant_type' => 'authorization_code',
-                'code' => $code,
-                'redirect_uri' => env('ZOOM_REDIRECT_URI'),
+                'grant_type' => 'account_credentials',
+                'account_id' => config('zoom.account_id'),
             ],
         ]);
 
         $data = json_decode($response->getBody(), true);
+        return $data['access_token'] ?? null;
 
-        // Store tokens
-        Storage::put('zoom_tokens.json', json_encode([
-            'access_token' => $data['access_token'],
-            'refresh_token' => $data['refresh_token'],
-            'expires_in' => now()->addSeconds($data['expires_in']),
-        ]));
-
-        return response()->json(['message' => 'Zoom authorized successfully', 'data' => $data]);
+    } catch (\Exception $e) {
+        Log::error('Zoom Token Error: ' . $e->getMessage());
+        return null;
     }
+}
 
-    // Get valid token (auto-refresh if expired)
-    public static function getAccessToken()
+    public function createZoomMeetingExist($startTime, $hostName)
     {
-        if (!Storage::exists('zoom_tokens.json')) {
-            return null;
+        $client = new Client();
+        $accessToken = $this->getAccessToken();
+
+        if (!$accessToken) {
+            return response()->json(['success' => false, 'message' => 'Failed to get Zoom access token'], 500);
         }
 
-        $tokens = json_decode(Storage::get('zoom_tokens.json'), true);
-
-        // If token expired, refresh it
-        if (now()->greaterThan($tokens['expires_in'])) {
-            $client = new Client();
-
-            $response = $client->post('https://zoom.us/oauth/token', [
+        try {
+            $response = $client->post('https://api.zoom.us/v2/users/me/meetings', [
                 'headers' => [
-                    'Authorization' => 'Basic ' . base64_encode(env('ZOOM_CLIENT_ID') . ':' . env('ZOOM_CLIENT_SECRET')),
+                    'Authorization' => "Bearer $accessToken",
+                    'Content-Type' => 'application/json',
                 ],
-                'form_params' => [
-                    'grant_type' => 'refresh_token',
-                    'refresh_token' => $tokens['refresh_token'],
+                'json' => [
+                    'topic' => "Meeting with $hostName",
+                    'type' => 2,
+                    'start_time' => Carbon::parse($startTime)->toIso8601String(),
+                    'duration' => 60,
+                    'timezone' => 'Asia/Colombo',
+                    'settings' => [
+                        'join_before_host' => true,
+                        'host_video' => true,
+                        'participant_video' => true,
+                    ],
                 ],
             ]);
 
             $data = json_decode($response->getBody(), true);
-
-            $tokens = [
-                'access_token' => $data['access_token'],
-                'refresh_token' => $data['refresh_token'],
-                'expires_in' => now()->addSeconds($data['expires_in']),
-            ];
-
-            Storage::put('zoom_tokens.json', json_encode($tokens));
+            return response()->json([
+                'success' => true,
+                'data' => $data,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
         }
+    }
 
-        return $tokens['access_token'];
+
+    public function createZoomMeeting($startTime, $hostName)
+{
+    $client = new \GuzzleHttp\Client();
+    $accessToken = $this->getAccessToken(); // Make sure this returns the OAuth token
+
+    $response = $client->post('https://api.zoom.us/v2/users/me/meetings', [
+        'headers' => [
+            'Authorization' => 'Bearer ' . $accessToken,
+            'Content-Type' => 'application/json',
+        ],
+        'json' => [
+            'topic' => "Meeting with $hostName",
+            'type' => 2, // scheduled meeting
+            'start_time' => $startTime->toIso8601String(),
+            'duration' => 60,
+            'timezone' => 'Asia/Colombo',
+            'settings' => [
+                'host_video' => true,
+                'participant_video' => true,
+            ],
+        ],
+    ]);
+
+    $data = json_decode($response->getBody()->getContents(), true);
+
+    // Return only the join_url
+    return $data['join_url'] ?? null;
+}
+
+
+    // For quick testing
+    public function testCreateMeeting()
+    {
+        return $this->createZoomMeeting(now()->addMinutes(10), 'Test Host');
     }
 }
