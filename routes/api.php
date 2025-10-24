@@ -41,6 +41,7 @@ Route::middleware('auth:sanctum')->group(function () {
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/case/store', [CaseController::class, 'store'])->name('case.store');
     Route::get('/my-case', [CaseController::class, 'index'])->name('case.index');
+    Route::get('/cases', [CaseController::class, 'AllCases'])->name('case.all');
 });
 
 
@@ -69,3 +70,8 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
 // Zoom OAuth
 Route::get('/zoom/authorize', [ZoomController::class, 'authorizeApp']);
 Route::get('/zoom/callback', [ZoomController::class, 'handleCallback']);
+
+Route::post('/send-whatsapp', [LawyerCaseController::class, 'sendWhatsAppMessage']);
+
+
+Route::get('/zoom/create-meeting', [ZoomController::class, 'testCreateMeeting']);
