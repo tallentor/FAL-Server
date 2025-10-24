@@ -12,24 +12,42 @@ class CaseModel extends Model
     protected $table = 'cases';
 
     protected $fillable = [
-        'user_id',
-        'type_of_visa',
-        'country_of_destination',
-        'visa_expiry_date',
-        'immigration_history',
-        'case_title',
-        'case_description',
-        'reason_for_immigration',
+    'user_id',
+    'full_name',
+    'case_title',
+    'case_description',
+    'type_of_visa',
+    'country_of_destination',
+    'current_visa_status',
+    'visa_expiry_date',
+    'immigration_history',
+    'reason_for_immigration',
+    'previous_visa_denials',
+    'number_of_dependents',
+    'additional_notes',
     ];
 
+
+    // public function user()
+    // {
+    //     return $this->belongsTo(User::class);
+    // }
+
+    // public function assignedLawyer()
+    // {
+    // return $this->hasOne(AssignLawyer::class);
+    // }
+
+    // Relationship to client
     public function user()
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(User::class, 'user_id');
     }
 
+    // Relationship to assigned lawyer
     public function assignedLawyer()
     {
-    return $this->hasOne(AssignLawyer::class);
+        return $this->hasOne(AssignLawyer::class, 'case_id');
     }
 
 }

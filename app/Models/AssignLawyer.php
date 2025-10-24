@@ -20,7 +20,13 @@ class AssignLawyer extends Model
     }
 
      public function lawyer()
-     {
-         return $this->belongsTo(LawyerProfile::class, 'lawyer_id');
-     }
+    {
+        return $this->belongsTo(User::class, 'lawyer_id');
+    }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
+
 }

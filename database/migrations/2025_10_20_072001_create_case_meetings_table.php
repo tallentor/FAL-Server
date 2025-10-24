@@ -22,7 +22,7 @@ return new class extends Migration
             $table->timestamps();
 
             $table->foreign('case_id')->references('id')->on('cases')->onDelete('cascade');
-            $table->foreign('lawyer_id')->references('id')->on('lawyer_profiles')->onDelete('cascade');
+            $table->foreign('lawyer_id')->references('id')->on('users')->onDelete('cascade');
             $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
         });
     }

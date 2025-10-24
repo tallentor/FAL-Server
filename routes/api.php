@@ -12,6 +12,8 @@ use App\Http\Controllers\LawyerProfileController;
 use App\Http\Controllers\Lawyer\LawyerCaseController;
 use App\Http\Controllers\Admin\AssignLawyerController;
 use App\Http\Controllers\CalendarController;
+use App\Http\Controllers\Admin\CasesNotificationController;
+
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -45,7 +47,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/case/store', [CaseController::class, 'store'])->name('case.store');
-    Route::get('/cases', [CaseController::class, 'index'])->name('case.index');
+    Route::get('/my-case', [CaseController::class, 'index'])->name('case.index');
 });
 
 
@@ -60,16 +62,17 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/my-cases', [LawyerCaseController::class, 'myAssignedCases']);
-    // Route::post('/cases/{caseId}/approve', [LawyerCaseController::class, 'approveCase']);
+    Route::post('/cases/{caseId}/approve', [LawyerCaseController::class, 'approveCase']);
     Route::post('/cases/{caseId}/reject', [LawyerCaseController::class, 'rejectCase']);
+});
+
+Route::middleware(['auth:sanctum', 'admin'])->group(function () {
+    Route::get('/admin/cases/approved', [CasesNotificationController::class, 'getApprovedCases']);
+    Route::get('/admin/cases/rejected', [CasesNotificationController::class, 'getRejectedCases']);
+    Route::get('/admin/notifications/{id}', [CasesNotificationController::class, 'markAsRead']);
 });
 
 
 // Zoom OAuth
 Route::get('/zoom/authorize', [ZoomController::class, 'authorizeApp']);
 Route::get('/zoom/callback', [ZoomController::class, 'handleCallback']);
-
-// Lawyer actions
-Route::middleware('auth:sanctum')->group(function () {
-    Route::post('/lawyer/approve-case/{caseId}', [LawyerCaseController::class, 'approveCase']);
-});
