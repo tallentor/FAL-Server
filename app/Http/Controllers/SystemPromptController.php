@@ -26,22 +26,22 @@ class SystemPromptController extends Controller
             'is_active' => 'boolean'
         ]);
 
-        $systemPrompt = SystemPrompt::create($validated);
-        return response()->json($systemPrompt, 201);
+        $system_prompt = SystemPrompt::create($validated);
+        return response()->json($system_prompt, 201);
     }
 
     /**
      * Display the specified resource.
      */
-    public function show(SystemPrompt $systemPrompt)
+    public function show(SystemPrompt $system_prompt)
     {
-        return response()->json($systemPrompt);
+        return response()->json($system_prompt);
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, SystemPrompt $systemPrompt)
+    public function update(Request $request, SystemPrompt $system_prompt)
     {
         $validated = $request->validate([
             'title' => 'sometimes|required|string|max:255',
@@ -49,16 +49,16 @@ class SystemPromptController extends Controller
             'is_active' => 'sometimes|boolean'
         ]);
 
-        $systemPrompt->update($validated);
-        return response()->json($systemPrompt);
+        $system_prompt->update($validated);
+        return response()->json($system_prompt);
     }
 
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(SystemPrompt $systemPrompt)
+    public function destroy(SystemPrompt $system_prompt)
     {
-        $systemPrompt->delete();
+        $system_prompt->delete();
         return response()->json(null, 204);
     }
 }
