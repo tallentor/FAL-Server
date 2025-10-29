@@ -5,23 +5,53 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\ZoomController;
+use App\Http\Controllers\CalendarController;
 use App\Http\Controllers\User\CaseController;
 use App\Http\Controllers\SystemPromptController;
 use App\Http\Controllers\User\ProfileController;
 use App\Http\Controllers\LawyerProfileController;
 use App\Http\Controllers\Lawyer\LawyerCaseController;
 use App\Http\Controllers\Admin\AssignLawyerController;
-use App\Http\Controllers\CalendarController;
+use Illuminate\Foundation\Auth\EmailVerificationRequest;
 use App\Http\Controllers\Admin\CasesNotificationController;
 
 
 Route::get('/user', function (Request $request) {
     return $request->user();
-})->middleware('auth:sanctum');
+})->middleware(['auth:sanctum', 'verified']);
 
 Route::post('/register',[AuthController::class,'register']);
 Route::post('/login',[AuthController::class,'login'])->name('login');
 Route::post('/logout',[AuthController::class,'logout'])->middleware('auth:sanctum');
+
+Route::middleware('auth:sanctum')->group(function () {
+    // Verify email notice
+    Route::get('/email/verify', function (Request $request) {
+        if ($request->user()->hasVerifiedEmail()) {
+            return response()->json(['message' => 'Already verified']);
+        }
+
+        $request->user()->sendEmailVerificationNotification();
+        return response()->json(['message' => 'Verification link sent']);
+    });
+
+    // Verify email callback
+    Route::get('/email/verify/{id}/{hash}', function (EmailVerificationRequest $request) {
+        $request->fulfill();
+        return response()->json(['message' => 'Email verified successfully']);
+    })->middleware(['signed'])->name('verification.verify');
+
+    // Resend verification link
+    Route::post('/email/resend', function (Request $request) {
+        if ($request->user()->hasVerifiedEmail()) {
+            return response()->json(['message' => 'Already verified']);
+        }
+
+        $request->user()->sendEmailVerificationNotification();
+
+        return response()->json(['message' => 'Verification link resent']);
+    });
+});
 
 
 Route::get('/approve-user', [AuthController::class, 'getPendingUsers']);
@@ -40,7 +70,7 @@ Route::apiResource('calendars', CalendarController::class);
 // Route::middleware('auth:sanctum')->get('/profile', [ProfileController::class, 'profile']);
 
 
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/profile/update', [ProfileController::class, 'updateProfile']);
     Route::get('/profile', [ProfileController::class, 'profile']);
 });
@@ -79,6 +109,5 @@ Route::get('/zoom/authorize', [ZoomController::class, 'authorizeApp']);
 Route::get('/zoom/callback', [ZoomController::class, 'handleCallback']);
 
 Route::post('/send-whatsapp', [LawyerCaseController::class, 'sendWhatsAppMessage']);
-
-
 Route::get('/zoom/create-meeting', [ZoomController::class, 'testCreateMeeting']);
+
