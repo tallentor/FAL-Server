@@ -13,13 +13,14 @@ return new class extends Migration
     {
         Schema::create('lawyer_profiles', function (Blueprint $table) {
             $table->id();
-            $table->foreignIdFor(\App\Models\User::class);
-            $table->text('cover_image');
-            $table->text('profile_image');
-            $table->integer('total_cases');
-            $table->string('earning');
-            $table->float('rating');
-            $table->integer('new_cases');
+            $table->foreignIdFor(\App\Models\User::class)->constrained()->onDelete('cascade');
+            $table->string('cover_image')->nullable();
+            $table->string('profile_image')->nullable();
+            $table->decimal('amount',10,2);
+            $table->text('description');
+            $table->text('education');
+            $table->text('specialty');
+            $table->text('experience');
             $table->boolean('verified')->default(false);
             $table->timestamps();
         });
