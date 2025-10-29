@@ -10,7 +10,7 @@ use Illuminate\Validation\Rule;
 
 class AuthController extends Controller
 {
-    public function register(Request $request)
+    public function register1(Request $request)
     {
         $fields = $request->validate([
             'name' => 'required',
@@ -42,6 +42,44 @@ class AuthController extends Controller
             'token' => $token->plainTextToken
         ];
     }
+
+    public function register(Request $request)
+{
+    $fields = $request->validate([
+        'name' => 'required',
+        'email' => 'required|email|unique:users|unique:pending_users',
+        'phone_number' => ['required', 'string', 'max:20', 'unique:users,phone_number', 'unique:pending_users,phone_number'],
+        'role' => ['required', Rule::in([0, 1, 2])],
+        'password' => 'required|confirmed'
+    ]);
+
+    // If role == 1, send to PendingUser for approval
+    if ($fields['role'] == 1) {
+        $fields['password'] = Hash::make($fields['password']);
+
+        PendingUser::create($fields);
+
+        return response()->json([
+            'message' => 'Your registration request has been submitted for approval. Please wait for admin approval.'
+        ], 202);
+    }
+
+    // Otherwise, register immediately
+    $fields['password'] = Hash::make($fields['password']);
+    $user = User::create($fields);
+
+    // Send verification email
+    $user->sendEmailVerificationNotification();
+
+    // Create Sanctum token
+    $token = $user->createToken($request->name)->plainTextToken;
+
+    return response()->json([
+        'message' => 'User registered successfully. A verification email has been sent to your email address.',
+        'user' => $user,
+        'token' => $token
+    ], 201);
+}
 
     public function approveUser($pendingUserId)
     {
@@ -83,7 +121,7 @@ class AuthController extends Controller
         ]);
     }
 
-    public function login(Request $request)
+    public function login1(Request $request)
     {
         $request->validate([
             'email' => 'required|email',
@@ -108,6 +146,44 @@ class AuthController extends Controller
         ];
     }
 
+
+
+    public function login(Request $request)
+{
+    $request->validate([
+        'email' => 'required|email',
+        'password' => 'required'
+    ]);
+
+    $user = User::where('email', $request->email)->first();
+
+    if (!$user || !Hash::check($request->password, $user->password)) {
+        return response()->json([
+            'message' => 'The provided credentials are incorrect.'
+        ], 401);
+    }
+
+    // Check if email is verified
+    if (!$user->hasVerifiedEmail()) {
+        // Send another verification link automatically
+        $user->sendEmailVerificationNotification();
+
+        return response()->json([
+            'message' => 'Your email address is not verified. A new verification link has been sent to your email.'
+        ], 403);
+    }
+
+    // Create Sanctum token
+    $token = $user->createToken($user->name)->plainTextToken;
+
+    return response()->json([
+        'message' => 'Login successful.',
+        'user' => $user,
+        'token' => $token
+    ], 200);
+}
+
+
     public function logout(Request $request)
     {
         $request->user()->tokens()->delete();
@@ -120,6 +196,6 @@ class AuthController extends Controller
     public function getPendingUsers(){
 
         return PendingUser::all();
-        
+
     }
 }
