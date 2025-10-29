@@ -5,11 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\LawyerProfile;
 use Illuminate\Http\Request;
 
-
-
 class LawyerProfileController extends Controller
 {
-
     public function index(Request $request)
 {
     $query = LawyerProfile::query();
@@ -61,8 +58,6 @@ class LawyerProfileController extends Controller
     return response()->json($lawyers);
 }
 
-
-
     public function store(Request $request)
     {
         // Validate input
@@ -70,10 +65,11 @@ class LawyerProfileController extends Controller
             'user_id' => 'required|exists:users,id',
             'cover_image' => 'required|file|image|max:2048',
             'profile_image' => 'required|file|image|max:2048',
-            'total_cases' => 'required|integer',
-            'earning' => 'required|string',
-            'rating' => 'required|numeric',
-            'new_cases' => 'required|integer',
+            'amount' => 'required|numeric|decimal:0,2',
+            'description' => 'required|string',
+            'education' => 'required|string',
+            'specialty' => 'required|string',
+            'experience' => 'required|string',
             'verified' => 'boolean',
         ]);
 
@@ -88,24 +84,22 @@ class LawyerProfileController extends Controller
         return response()->json($profile, 201);
     }
 
-
     public function show(LawyerProfile $lawyerProfile)
     {
-        // Show a specific lawyer profile
         return $lawyerProfile;
     }
-
 
     public function update(Request $request, LawyerProfile $lawyerProfile)
     {
         // Validate input
         $validated = $request->validate([
-            'cover_image' => 'file|image|max:2048',
-            'profile_image' => 'file|image|max:2048',
-            'total_cases' => 'integer',
-            'earning' => 'string',
-            'rating' => 'numeric',
-            'new_cases' => 'integer',
+            'cover_image' => 'nullable|file|image|max:2048',
+            'profile_image' => 'nullable|file|image|max:2048',
+            'amount' => 'numeric|decimal:0,2',
+            'description' => 'string',
+            'education' => 'string',
+            'specialty' => 'string',
+            'experience' => 'string',
             'verified' => 'boolean',
         ]);
 
@@ -121,10 +115,8 @@ class LawyerProfileController extends Controller
         return response()->json($lawyerProfile);
     }
 
-
     public function destroy(LawyerProfile $lawyerProfile)
     {
-        // Delete the lawyer profile
         $lawyerProfile->delete();
         return response()->json(['message' => 'Profile deleted']);
     }

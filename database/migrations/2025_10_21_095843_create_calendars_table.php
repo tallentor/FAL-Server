@@ -12,14 +12,13 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('calendars', function (Blueprint $table) {
-            $table->id();
-            $table->dateTime('date');
-            $table->time('time');
-            $table->foreignIdFor(\App\Models\CaseModel::class);
-            $table->foreignIdFor(App\Models\User::class);
-            $table->text('note');
-            $table->timestamps();
-        });
+        $table->id();
+        $table->foreignIdFor(\App\Models\User::class);
+        $table->foreignIdFor(\App\Models\CaseModel::class);
+        $table->date('start_date'); // the current date or when the 7 days start
+        $table->timestamps();
+    });
+
     }
 
     /**
@@ -27,6 +26,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('calanders');
+        Schema::dropIfExists('calendars');
     }
 };

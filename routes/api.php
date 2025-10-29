@@ -109,6 +109,5 @@ Route::get('/zoom/authorize', [ZoomController::class, 'authorizeApp']);
 Route::get('/zoom/callback', [ZoomController::class, 'handleCallback']);
 
 Route::post('/send-whatsapp', [LawyerCaseController::class, 'sendWhatsAppMessage']);
-
-
 Route::get('/zoom/create-meeting', [ZoomController::class, 'testCreateMeeting']);
+
