@@ -2,11 +2,15 @@
 
 namespace App\Http\Controllers;
 
+use Carbon\Carbon;
 use App\Models\User;
 use App\Models\PendingUser;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
+use App\Events\LawyerStatusUpdated;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
+
 
 class AuthController extends Controller
 {
@@ -121,30 +125,7 @@ class AuthController extends Controller
         ]);
     }
 
-    public function login1(Request $request)
-    {
-        $request->validate([
-            'email' => 'required|email',
-            'password' => 'required'
-        ]);
 
-        $user = User::where('email', $request->email)->first();
-
-        if (!$user || !Hash::check($request->password, $user->password)) {
-            return [
-                'errors' => [
-                    'email' => ['The provided credentials are incorrect.']
-                ]
-            ];
-        }
-
-        $token = $user->createToken($user->name);
-
-        return [
-            'user' => $user,
-            'token' => $token->plainTextToken
-        ];
-    }
 
 
 
@@ -184,7 +165,53 @@ class AuthController extends Controller
 }
 
 
-    public function logout(Request $request)
+ public function loginTest(Request $request)
+{
+    $request->validate([
+        'email' => 'required|email',
+        'password' => 'required'
+    ]);
+
+    $user = User::where('email', $request->email)->first();
+
+    if (!$user || !Hash::check($request->password, $user->password)) {
+        return response()->json([
+            'message' => 'The provided credentials are incorrect.'
+        ], 401);
+    }
+
+    // Check if email is verified
+    if (!$user->hasVerifiedEmail()) {
+        $user->sendEmailVerificationNotification();
+
+        return response()->json([
+            'message' => 'Your email address is not verified. A new verification link has been sent to your email.'
+        ], 403);
+    }
+
+    // Update last activity and mark as active if the user is a lawyer
+    if ($user->role == 1) { // assuming role 1 = lawyer
+        $user->last_activity = now();
+        $user->is_active = true;
+        $user->save();
+
+        // Optional: broadcast event for real-time frontend updates
+        event(new \App\Events\LawyerStatusUpdated($user->id, 'active'));
+    }
+
+    // Create Sanctum token
+    $token = $user->createToken($user->name)->plainTextToken;
+
+    return response()->json([
+        'message' => 'Login successful.',
+        'user' => $user,
+        'token' => $token
+    ], 200);
+}
+
+
+
+    public function logoutExist(Request $request)
     {
         $request->user()->tokens()->delete();
 
@@ -193,6 +220,29 @@ class AuthController extends Controller
         ];
     }
 
+
+    public function logout(Request $request)
+{
+    $user = $request->user();
+
+    if ($user && $user->role == 1) {
+        $user->last_activity = null;
+        $user->save();
+
+        event(new LawyerStatusUpdated($user->id, 'inactive'));
+    }
+
+    // using sanctum tokens:
+    if ($request->user()) {
+        $request->user()->currentAccessToken()?->delete(); // or tokens()->delete() depending on implementation
+    }
+
+    return response()->json(['message' => 'Logged out']);
+}
+
+
+
+    // Get list of pending lawyers
     public function getPendingUsers(){
 
         return PendingUser::all();
