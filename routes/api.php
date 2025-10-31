@@ -1,20 +1,22 @@
 <?php
 
 use Illuminate\Http\Request;
+use App\Events\TestPusherEvent;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\ZoomController;
 use App\Http\Controllers\CalendarController;
 use App\Http\Controllers\User\CaseController;
+use App\Http\Controllers\API\PaymentController;
 use App\Http\Controllers\SystemPromptController;
 use App\Http\Controllers\User\ProfileController;
 use App\Http\Controllers\LawyerProfileController;
 use App\Http\Controllers\Lawyer\LawyerCaseController;
 use App\Http\Controllers\Admin\AssignLawyerController;
+use App\Http\Controllers\Lawyer\ActiveLawyerController;
 use Illuminate\Foundation\Auth\EmailVerificationRequest;
 use App\Http\Controllers\Admin\CasesNotificationController;
-
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -62,9 +64,16 @@ Route::delete('/reject-user/{id}', [AuthController::class, 'rejectUser'])->middl
 
 Route::post('/chat/send', [ChatController::class, 'sendMessage']);
 
-Route::apiResource('lawyer_profiles', LawyerProfileController::class);
+// Route::middleware(['auth:sanctum'])->group(function () {
+    // Route::apiResource('lawyer_profiles', LawyerProfileController::class);
+// });
 Route::apiResource('system_prompts', SystemPromptController::class);
 Route::apiResource('calendars', CalendarController::class);
+
+ Route::middleware(['auth:sanctum','last_activity'])->group(function () {
+    Route::get('/lawyer/profile', [LawyerProfileController::class, 'getAuthLawyerProfile']);
+ });
+
 
 
 // Route::middleware('auth:sanctum')->get('/profile', [ProfileController::class, 'profile']);
@@ -111,3 +120,26 @@ Route::get('/zoom/callback', [ZoomController::class, 'handleCallback']);
 Route::post('/send-whatsapp', [LawyerCaseController::class, 'sendWhatsAppMessage']);
 Route::get('/zoom/create-meeting', [ZoomController::class, 'testCreateMeeting']);
 
+
+
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/payhere/payment', [PaymentController::class, 'createPayment'])->name('payhere.payment');
+});
+
+Route::post('/payhere/ipn', [PaymentController::class, 'handleIPN'])->name('payhere.payment.ipn');
+Route::get('/payhere/success/{orderId}', [PaymentController::class, 'paymentSuccess'])->name('payhere.payment.success');
+Route::get('/payhere/cancel/{orderId}', [PaymentController::class, 'paymentCancel'])->name('payhere.payment.cancel');
+
+
+
+
+Route::middleware(['auth:sanctum', 'last_activity'])->get('/lawyers', [LawyerProfileController::class, 'index']);
+
+Route::get('/active-lawyers', [ActiveLawyerController::class, 'getActiveLawyers']);
+
+
+
+Route::get('/test-pusher', function () {
+    event(new TestPusherEvent('Hello from Laravel backend!'));
+    return response()->json(['success' => true, 'message' => 'Event sent to Pusher']);
+});
