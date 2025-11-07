@@ -63,14 +63,20 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     // Lawyer assigned cases
-    public function assignedCases()
-    {
-        return $this->hasMany(AssignLawyer::class, 'lawyer_id');
-    }
+    public function lawyerProfile()
+{
+    return $this->hasOne(LawyerProfile::class);
+}
 
     // Client’s own cases
     public function cases()
     {
         return $this->hasMany(CaseModel::class, 'user_id');
     }
+
+
+    public function assignedCases()
+{
+    return $this->belongsToMany(CaseModel::class, 'assign_lawyers', 'lawyer_id', 'case_id');
+}
 }

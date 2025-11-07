@@ -9,6 +9,7 @@ use App\Http\Controllers\ZoomController;
 use App\Http\Controllers\CalendarController;
 use App\Http\Controllers\User\CaseController;
 use App\Http\Controllers\API\PaymentController;
+use App\Http\Controllers\AppointmentController;
 use App\Http\Controllers\SystemPromptController;
 use App\Http\Controllers\User\ProfileController;
 use App\Http\Controllers\LawyerProfileController;
@@ -64,9 +65,8 @@ Route::delete('/reject-user/{id}', [AuthController::class, 'rejectUser'])->middl
 
 Route::post('/chat/send', [ChatController::class, 'sendMessage']);
 
-// Route::middleware(['auth:sanctum'])->group(function () {
-    // Route::apiResource('lawyer_profiles', LawyerProfileController::class);
-// });
+
+Route::apiResource('lawyer_profiles', LawyerProfileController::class);
 Route::apiResource('system_prompts', SystemPromptController::class);
 Route::apiResource('calendars', CalendarController::class);
 
@@ -74,9 +74,6 @@ Route::apiResource('calendars', CalendarController::class);
     Route::get('/lawyer/profile', [LawyerProfileController::class, 'getAuthLawyerProfile']);
  });
 
-
-
-// Route::middleware('auth:sanctum')->get('/profile', [ProfileController::class, 'profile']);
 
 
 Route::middleware(['auth:sanctum'])->group(function () {
@@ -142,4 +139,14 @@ Route::get('/active-lawyers', [ActiveLawyerController::class, 'getActiveLawyers'
 Route::get('/test-pusher', function () {
     event(new TestPusherEvent('Hello from Laravel backend!'));
     return response()->json(['success' => true, 'message' => 'Event sent to Pusher']);
+});
+
+
+
+Route::get('/all/lawyers', [LawyerProfileController::class, 'getAllLawyers']);
+
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/appointments', [AppointmentController::class, 'store']);
+    Route::get('/lawyer/appointments', [AppointmentController::class, 'getMyAppointments']);
+    Route::put('/appointments/{id}/approve', [AppointmentController::class, 'approveAppointment']);
 });

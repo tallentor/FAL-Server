@@ -11,9 +11,9 @@ class LawyerProfile extends Model
     use HasFactory;
 
     public function assignedCases()
-    {
-    return $this->hasMany(AssignLawyer::class, 'lawyer_id');
-    }
+{
+    return $this->belongsToMany(CaseModel::class, 'assign_lawyers', 'lawyer_id', 'case_id');
+}
 
     protected $guarded = [];
 
