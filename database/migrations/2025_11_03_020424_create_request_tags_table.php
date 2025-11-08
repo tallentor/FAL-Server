@@ -11,16 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
-       Schema::create('calendar_slots', function (Blueprint $table) {
+        Schema::create('request_tags', function (Blueprint $table) {
             $table->id();
-            $table->foreignIdFor(\App\Models\Calendar::class)->constrained()->cascadeOnDelete();
-            $table->date('day');
-            $table->json('slot_1')->nullable();
-            $table->json('slot_2')->nullable();
-            $table->json('slot_3')->nullable();
             $table->timestamps();
         });
-
     }
 
     /**
@@ -28,6 +22,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('calendar_slots');
+        Schema::dropIfExists('request_tags');
     }
 };

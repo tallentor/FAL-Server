@@ -3,48 +3,71 @@
 namespace App\Http\Controllers;
 
 use App\Models\CalendarSlot;
-use App\Http\Requests\StoreCalendarSlotRequest;
-use App\Http\Requests\UpdateCalendarSlotRequest;
+use Illuminate\Http\Request;
 
 class CalendarSlotController extends Controller
 {
     /**
-     * Display a listing of the resource.
+     * Display all slots (optional: include calendar info).
      */
     public function index()
     {
-        //
+        $slots = CalendarSlot::with('calendar')->get();
+        return response()->json($slots);
     }
 
     /**
-     * Store a newly created resource in storage.
+     * Create a new slot record manually.
      */
-    public function store(StoreCalendarSlotRequest $request)
+    public function store(Request $request)
     {
-        //
+        $validated = $request->validate([
+            'calendar_id' => 'required|exists:calendars,id',
+            'day'         => 'required|date',
+            'slot_1'      => 'nullable|array',
+            'slot_2'      => 'nullable|array',
+            'slot_3'      => 'nullable|array',
+        ]);
+
+        $slot = CalendarSlot::create($validated);
+
+        return response()->json($slot, 201);
     }
 
     /**
-     * Display the specified resource.
+     * Display one slot (with its calendar).
      */
     public function show(CalendarSlot $calendarSlot)
     {
-        //
+        return response()->json($calendarSlot->load('calendar'));
     }
 
     /**
-     * Update the specified resource in storage.
+     * Update JSON-based slots.
      */
-    public function update(UpdateCalendarSlotRequest $request, CalendarSlot $calendarSlot)
+    public function update(Request $request, CalendarSlot $calendarSlot)
     {
-        //
+        $validated = $request->validate([
+            'slot_1' => 'nullable|array',
+            'slot_2' => 'nullable|array',
+            'slot_3' => 'nullable|array',
+        ]);
+
+        $calendarSlot->update($validated);
+
+        return response()->json([
+            'message' => 'Slot updated successfully',
+            'data'    => $calendarSlot
+        ]);
     }
 
     /**
-     * Remove the specified resource from storage.
+     * Delete a slot (one day’s schedule).
      */
     public function destroy(CalendarSlot $calendarSlot)
     {
-        //
+        $calendarSlot->delete();
+
+        return response()->json(['message' => 'Slot deleted successfully'], 204);
     }
 }

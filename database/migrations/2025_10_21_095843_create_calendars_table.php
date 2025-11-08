@@ -14,8 +14,10 @@ return new class extends Migration
         Schema::create('calendars', function (Blueprint $table) {
         $table->id();
         $table->foreignIdFor(\App\Models\User::class);
-        $table->foreignIdFor(\App\Models\CaseModel::class);
-        $table->date('start_date'); // the current date or when the 7 days start
+        $table->foreignIdFor(\App\Models\LawyerProfile::class);
+        $table->date('date'); 
+        $table->time('time');
+        $table->text('note')->nullable();
         $table->timestamps();
     });
 

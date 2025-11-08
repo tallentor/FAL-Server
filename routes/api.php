@@ -68,6 +68,7 @@ Route::post('/chat/send', [ChatController::class, 'sendMessage']);
 
 Route::apiResource('lawyer_profiles', LawyerProfileController::class);
 Route::apiResource('system_prompts', SystemPromptController::class);
+
 Route::apiResource('calendars', CalendarController::class);
 
  Route::middleware(['auth:sanctum','last_activity'])->group(function () {
@@ -127,7 +128,16 @@ Route::post('/payhere/ipn', [PaymentController::class, 'handleIPN'])->name('payh
 Route::get('/payhere/success/{orderId}', [PaymentController::class, 'paymentSuccess'])->name('payhere.payment.success');
 Route::get('/payhere/cancel/{orderId}', [PaymentController::class, 'paymentCancel'])->name('payhere.payment.cancel');
 
+Route::post('/payments/create', [PaymentController::class, 'createPayment'])
+        ->name('api.payments.create');
+    
+// Refund payment
+Route::post('/payments/{orderId}/refund', [PaymentController::class, 'refundPayment'])
+    ->name('api.payments.refund');
 
+// Check refund status
+Route::get('/payments/{orderId}/refund-status', [PaymentController::class, 'checkRefundStatus'])
+    ->name('api.payments.refund.status');
 
 
 Route::middleware(['auth:sanctum', 'last_activity'])->get('/lawyers', [LawyerProfileController::class, 'index']);
