@@ -78,7 +78,7 @@ class ZoomController extends Controller
     }
 
 
-    public function createZoomMeeting($startTime, $hostName)
+    public function createZoomMeetingzzzzzzzzzzzzz($startTime, $hostName)
 {
     $client = new \GuzzleHttp\Client();
     $accessToken = $this->getAccessToken(); // Make sure this returns the OAuth token
@@ -106,6 +106,42 @@ class ZoomController extends Controller
     // Return only the join_url
     return $data['join_url'] ?? null;
 }
+
+
+
+
+
+public function createZoomMeeting($startTime, $hostName)
+{
+    $client = new \GuzzleHttp\Client();
+    $accessToken = $this->getAccessToken();
+
+    $response = $client->post('https://api.zoom.us/v2/users/me/meetings', [
+        'headers' => [
+            'Authorization' => 'Bearer ' . $accessToken,
+            'Content-Type' => 'application/json',
+        ],
+        'json' => [
+            'topic' => "Meeting with $hostName",
+            'type' => 2,
+            'start_time' => $startTime->toIso8601String(),
+            'duration' => 60,
+            'timezone' => 'Asia/Colombo',
+            'settings' => [
+                'host_video' => true,
+                'participant_video' => true,
+            ],
+        ],
+    ]);
+
+    $data = json_decode($response->getBody()->getContents(), true);
+
+    return [
+        'join_url' => $data['join_url'] ?? null,
+        'start_url' => $data['start_url'] ?? null, // host link
+    ];
+}
+
 
 
     // For quick testing

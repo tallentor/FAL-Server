@@ -50,4 +50,9 @@ class CaseModel extends Model
         return $this->hasOne(AssignLawyer::class, 'case_id');
     }
 
+    public function lawyers()
+{
+    return $this->belongsToMany(LawyerProfile::class, 'assign_lawyers', 'case_id', 'lawyer_id');
+}
+
 }

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\LawyerProfile;
 use Illuminate\Support\Facades\Auth;
+use Carbon\Carbon;
 
 class LawyerProfileController extends Controller
 {
@@ -60,7 +61,7 @@ class LawyerProfileController extends Controller
 }
 
 
-    public function index(Request $request)
+    public function index2(Request $request)
 {
     $query = LawyerProfile::with('user:id,name');
 
@@ -111,6 +112,201 @@ class LawyerProfileController extends Controller
 
     return response()->json($lawyers);
 }
+
+
+
+
+
+public function index(Request $request)
+{
+    $threshold = Carbon::now()->subMinutes(5); // user active if within last 5 mins
+
+    // Base query with user relation
+    $query = LawyerProfile::with(['user:id,name,email,last_activity']);
+
+    // ----- Filtering -----
+    if ($request->filled('min_cases')) {
+        $query->where('total_cases', '>=', $request->min_cases);
+    }
+
+    if ($request->filled('max_cases')) {
+        $query->where('total_cases', '<=', $request->max_cases);
+    }
+
+    if ($request->filled('min_rating')) {
+        $query->where('rating', '>=', $request->min_rating);
+    }
+
+    if ($request->filled('max_rating')) {
+        $query->where('rating', '<=', $request->max_rating);
+    }
+
+    if ($request->filled('verified')) {
+        $verified = filter_var($request->verified, FILTER_VALIDATE_BOOLEAN);
+        $query->where('verified', $verified);
+    }
+
+    // ----- Sorting -----
+    if ($request->filled('sort_by')) {
+        $sortField = $request->get('sort_by');
+        $sortOrder = $request->get('sort_order', 'desc');
+
+        if (in_array($sortField, ['total_cases', 'rating', 'created_at'])) {
+            $query->orderBy($sortField, $sortOrder);
+        }
+    }
+
+    // ----- Pagination or Full Data -----
+    if ($request->filled('paginate')) {
+        $perPage = (int) $request->get('paginate', 10);
+        $lawyers = $query->paginate($perPage);
+        $data = $lawyers->getCollection();
+    } else {
+        $data = $query->get();
+    }
+
+    // ----- Transform Data -----
+    $data->transform(function ($lawyer) use ($threshold) {
+        $isActive = false;
+
+        if ($lawyer->user && $lawyer->user->last_activity) {
+            $isActive = Carbon::parse($lawyer->user->last_activity)->greaterThanOrEqualTo($threshold);
+        }
+
+        return [
+            'id' => $lawyer->id,
+            'user_id' => $lawyer->user_id,
+            'lawyer_name' => $lawyer->lawyer_name ?? $lawyer->user->name ?? null,
+            'cover_image' => $lawyer->cover_image,
+            'profile_image' => $lawyer->profile_image,
+            'amount' => $lawyer->amount,
+            'description' => $lawyer->description,
+            'education' => $lawyer->education,
+            'specialty' => $lawyer->specialty,
+            'experience' => $lawyer->experience,
+            'verified' => $lawyer->verified,
+            'languages' => $lawyer->languages,
+            'total_cases' => $lawyer->total_cases,
+            'rating' => $lawyer->rating,
+            'created_at' => $lawyer->created_at,
+            'updated_at' => $lawyer->updated_at,
+            'user_email' => $lawyer->user->email ?? null,
+            'last_activity' => $lawyer->user->last_activity ?? null,
+            'is_active' => $isActive,
+        ];
+    });
+
+    // Filter only active lawyers if requested
+    if ($request->boolean('only_active')) {
+        $data = $data->filter(fn($l) => $l['is_active'])->values();
+    }
+
+    // Attach transformed data back if paginated
+    if (isset($lawyers)) {
+        $lawyers->setCollection($data);
+    }
+
+    // ----- Return Response -----
+    return response()->json([
+        'success' => true,
+        'lawyers' => isset($lawyers) ? $lawyers : $data,
+    ]);
+}
+
+
+
+
+//========================================================
+
+public function getAllLawyers(Request $request)
+{
+    $threshold = Carbon::now()->subMinutes(5);
+
+    // Load lawyer profiles + related user data
+    $query = LawyerProfile::with(['user:id,name,email,last_activity']);
+
+    // ----- Filtering -----
+    if ($request->has('min_cases')) {
+        $query->where('total_cases', '>=', $request->min_cases);
+    }
+
+    if ($request->has('max_cases')) {
+        $query->where('total_cases', '<=', $request->max_cases);
+    }
+
+    if ($request->has('min_rating')) {
+        $query->where('rating', '>=', $request->min_rating);
+    }
+
+    if ($request->has('max_rating')) {
+        $query->where('rating', '<=', $request->max_rating);
+    }
+
+    if ($request->has('verified')) {
+        $verified = filter_var($request->verified, FILTER_VALIDATE_BOOLEAN);
+        $query->where('verified', $verified);
+    }
+
+    // ----- Sorting -----
+    if ($request->has('sort_by')) {
+        $sortField = $request->get('sort_by');
+        $sortOrder = $request->get('sort_order', 'desc');
+
+        if (in_array($sortField, ['total_cases', 'rating'])) {
+            $query->orderBy($sortField, $sortOrder);
+        }
+    }
+
+    // ----- Pagination or Full Data -----
+    if ($request->has('paginate')) {
+        $perPage = $request->get('paginate', 10);
+        $lawyers = $query->paginate($perPage);
+    } else {
+        $lawyers = $query->get();
+    }
+
+    // ----- Add is_active and user info -----
+    $lawyers->transform(function ($lawyer) use ($threshold) {
+        $isActive = false;
+
+        if ($lawyer->user && $lawyer->user->last_activity) {
+            $isActive = $lawyer->user->last_activity >= $threshold;
+        }
+
+        return [
+            'id' => $lawyer->id,
+            'user_id' => $lawyer->user_id,
+            'lawyer_name' => $lawyer->lawyer_name ?? $lawyer->user->name ?? null,
+            'cover_image' => $lawyer->cover_image,
+            'profile_image' => $lawyer->profile_image,
+            'amount' => $lawyer->amount,
+            'description' => $lawyer->description,
+            'education' => $lawyer->education,
+            'specialty' => $lawyer->specialty,
+            'experience' => $lawyer->experience,
+            'verified' => $lawyer->verified,
+            'languages' => $lawyer->languages,
+            'total_cases' => $lawyer->total_cases,
+            'rating' => $lawyer->rating,
+            'created_at' => $lawyer->created_at,
+            'updated_at' => $lawyer->updated_at,
+            'user_email' => $lawyer->user->email ?? null,
+            'last_activity' => $lawyer->user->last_activity ?? null,
+            'is_active' => $isActive,
+        ];
+    });
+
+    // Optional: filter only active lawyers if requested
+    if ($request->boolean('only_active')) {
+        $lawyers = $lawyers->filter(fn($l) => $l['is_active'])->values();
+    }
+
+    return response()->json([
+        'success' => true,
+        'lawyers' => $lawyers,
+    ]);
+}
+//========================================================
 
 /**
  * Helper function to format each lawyer profile.
