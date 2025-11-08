@@ -3,68 +3,68 @@
 namespace App\Http\Controllers;
 
 use App\Models\Calendar;
+use App\Models\User;
 use Illuminate\Http\Request;
-use App\Http\Requests\StoreCalendarRequest;
-use App\Http\Requests\UpdateCalendarRequest;
+use Carbon\Carbon;
 
 class CalendarController extends Controller
 {
+    /**
+     * Display a list of calendars.
+     */
     public function index()
     {
-        return response()->json(Calendar::all());
+        $calendars = Calendar::with('user', 'lawyerProfile')->get();
+        return response()->json($calendars);
     }
 
     /**
-     * Store a newly created resource in storage.
+     * Store a new calendar appointment.
      */
     public function store(Request $request)
     {
         $validated = $request->validate([
+            'user_id' => 'required|exists:users,id',
+            'lawyer_profile_id' => 'required|exists:lawyer_profiles,id',
             'date' => 'required|date',
             'time' => 'required|date_format:H:i:s',
-            'case_model_id' => 'required|exists:cases,id',
-            'user_id' => 'required|exists:users,id',
-            'note' => 'required|string',
+            'note' => 'nullable|string',
         ]);
 
         $calendar = Calendar::create($validated);
 
-        return response()->json($calendar, 201);
+        return response()->json($calendar->load('user', 'lawyerProfile'), 201);
     }
 
     /**
-     * Display the specified resource.
+     * Display a specific calendar.
      */
     public function show(Calendar $calendar)
     {
-        return response()->json($calendar);
+        return response()->json($calendar->load('user', 'lawyerProfile'));
     }
 
     /**
-     * Update the specified resource in storage.
+     * Update a calendar appointment.
      */
     public function update(Request $request, Calendar $calendar)
     {
         $validated = $request->validate([
-            'date' => 'sometimes|required|date',
-            'time' => 'sometimes|required|date_format:H:i:s',
-            'case_model_id' => 'sometimes|required|exists:cases,id',
-            'user_id' => 'sometimes|required|exists:users,id',
-            'note' => 'sometimes|required|string',
+            'date' => 'sometimes|date',
+            'time' => 'sometimes|date_format:H:i:s',
+            'note' => 'nullable|string',
         ]);
 
         $calendar->update($validated);
-
-        return response()->json($calendar);
+        return response()->json($calendar->load('user', 'lawyerProfile'));
     }
 
     /**
-     * Remove the specified resource from storage.
+     * Delete a calendar appointment.
      */
     public function destroy(Calendar $calendar)
     {
         $calendar->delete();
-
         return response()->json(null, 204);
     }
 }
