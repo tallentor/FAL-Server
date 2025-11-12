@@ -248,4 +248,19 @@ class AuthController extends Controller
         return PendingUser::all();
 
     }
+
+    public function getAllUsers(){
+        return User::where('role' , 0)->get();
+    }
+
+    public function deleteUser(User $user)
+{
+    $user->delete();
+
+    return response()->json([
+        'message' => 'User deleted successfully'
+    ]);
+}
+
+
 }

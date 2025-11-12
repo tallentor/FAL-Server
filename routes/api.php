@@ -26,6 +26,8 @@ Route::get('/user', function (Request $request) {
 Route::post('/register',[AuthController::class,'register']);
 Route::post('/login',[AuthController::class,'login'])->name('login');
 Route::post('/logout',[AuthController::class,'logout'])->middleware('auth:sanctum');
+Route::get('/users',[AuthController::class,'getAllUsers'])->middleware('auth:sanctum');
+Route::delete('/users/{user}',[AuthController::class,'deleteUser'])->middleware('auth:sanctum');
 
 Route::middleware('auth:sanctum')->group(function () {
     // Verify email notice
@@ -66,10 +68,14 @@ Route::delete('/reject-user/{id}', [AuthController::class, 'rejectUser'])->middl
 Route::post('/chat/send', [ChatController::class, 'sendMessage']);
 
 
-Route::apiResource('lawyer_profiles', LawyerProfileController::class);
+// Route::apiResource('lawyer_profiles', LawyerProfileController::class);
+
+Route::get('/lawyer_profiles',[LawyerProfileController::class , 'index']);
+Route::post('/lawyer_profiles',[LawyerProfileController::class , 'store']);
 Route::apiResource('system_prompts', SystemPromptController::class);
 
 Route::apiResource('calendars', CalendarController::class);
+Route::get('/calendars/lawyers/{user}', [CalendarController::class, 'filterLawyers']);
 
  Route::middleware(['auth:sanctum','last_activity'])->group(function () {
     Route::get('/lawyer/profile', [LawyerProfileController::class, 'getAuthLawyerProfile']);
