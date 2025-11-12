@@ -14,6 +14,7 @@ use App\Http\Controllers\SystemPromptController;
 use App\Http\Controllers\User\ProfileController;
 use App\Http\Controllers\LawyerProfileController;
 use App\Http\Controllers\Lawyer\LawyerCaseController;
+use App\Http\Controllers\Admin\AppointmentsController;
 use App\Http\Controllers\Admin\AssignLawyerController;
 use App\Http\Controllers\Lawyer\ActiveLawyerController;
 use Illuminate\Foundation\Auth\EmailVerificationRequest;
@@ -24,7 +25,7 @@ Route::get('/user', function (Request $request) {
 })->middleware(['auth:sanctum', 'verified']);
 
 Route::post('/register',[AuthController::class,'register']);
-Route::post('/login',[AuthController::class,'login'])->name('login');
+Route::post('/login',[AuthController::class,'login'])->name('login')->middleware('last_activity');
 Route::post('/logout',[AuthController::class,'logout'])->middleware('auth:sanctum');
 
 Route::middleware('auth:sanctum')->group(function () {
@@ -38,12 +39,6 @@ Route::middleware('auth:sanctum')->group(function () {
         return response()->json(['message' => 'Verification link sent']);
     });
 
-    // Verify email callback
-    Route::get('/email/verify/{id}/{hash}', function (EmailVerificationRequest $request) {
-        $request->fulfill();
-        return response()->json(['message' => 'Email verified successfully']);
-    })->middleware(['signed'])->name('verification.verify');
-
     // Resend verification link
     Route::post('/email/resend', function (Request $request) {
         if ($request->user()->hasVerifiedEmail()) {
@@ -55,6 +50,12 @@ Route::middleware('auth:sanctum')->group(function () {
         return response()->json(['message' => 'Verification link resent']);
     });
 });
+
+// Verify email callback
+    Route::get('/email/verify/{id}/{hash}', function (EmailVerificationRequest $request) {
+        $request->fulfill();
+        return response()->json(['message' => 'Email verified successfully']);
+    })->middleware(['signed'])->name('verification.verify');
 
 
 Route::get('/approve-user', [AuthController::class, 'getPendingUsers']);
@@ -130,7 +131,7 @@ Route::get('/payhere/cancel/{orderId}', [PaymentController::class, 'paymentCance
 
 Route::post('/payments/create', [PaymentController::class, 'createPayment'])
         ->name('api.payments.create');
-    
+
 // Refund payment
 Route::post('/payments/{orderId}/refund', [PaymentController::class, 'refundPayment'])
     ->name('api.payments.refund');
@@ -160,3 +161,17 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/lawyer/appointments', [AppointmentController::class, 'getMyAppointments']);
     Route::put('/appointments/{id}/approve', [AppointmentController::class, 'approveAppointment']);
 });
+
+
+//Route::middleware(['auth:sanctum', 'admin'])->get('/admin/appointments/approved', [AppointmentsController::class, 'getApprovedAppointments']);
+
+Route::middleware(['auth:sanctum', 'admin'])->group(function () {
+    Route::get('/admin/appointments/approved', [AppointmentsController::class, 'getApprovedAppointments']);
+    Route::post('/admin/appointments/{id}/payment-link', [AppointmentsController::class, 'addPaymentLink']);
+});
+
+// Get lawyer's zoom meeting link for an appointment
+Route::middleware('auth:sanctum')->get(
+    '/lawyer/appointments/{appointment_id}/meeting-links',
+    [LawyerProfileController::class, 'getZoomLink']
+);

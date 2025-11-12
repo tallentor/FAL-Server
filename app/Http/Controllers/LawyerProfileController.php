@@ -2,10 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use App\Models\LawyerProfile;
+use App\Models\AppointmentMeeting;
 use Illuminate\Support\Facades\Auth;
-use Carbon\Carbon;
 
 class LawyerProfileController extends Controller
 {
@@ -117,61 +118,18 @@ class LawyerProfileController extends Controller
 
 
 
-public function index(Request $request)
+public function index()
 {
-    $threshold = Carbon::now()->subMinutes(5); // user active if within last 5 mins
+    $threshold = Carbon::now()->subMinutes(5); // consider active if last 5 mins
 
-    // Base query with user relation
-    $query = LawyerProfile::with(['user:id,name,email,last_activity']);
+    // Get all lawyers with user info
+    $lawyers = LawyerProfile::with(['user:id,name,email,last_activity'])->get();
 
-    // ----- Filtering -----
-    if ($request->filled('min_cases')) {
-        $query->where('total_cases', '>=', $request->min_cases);
-    }
-
-    if ($request->filled('max_cases')) {
-        $query->where('total_cases', '<=', $request->max_cases);
-    }
-
-    if ($request->filled('min_rating')) {
-        $query->where('rating', '>=', $request->min_rating);
-    }
-
-    if ($request->filled('max_rating')) {
-        $query->where('rating', '<=', $request->max_rating);
-    }
-
-    if ($request->filled('verified')) {
-        $verified = filter_var($request->verified, FILTER_VALIDATE_BOOLEAN);
-        $query->where('verified', $verified);
-    }
-
-    // ----- Sorting -----
-    if ($request->filled('sort_by')) {
-        $sortField = $request->get('sort_by');
-        $sortOrder = $request->get('sort_order', 'desc');
-
-        if (in_array($sortField, ['total_cases', 'rating', 'created_at'])) {
-            $query->orderBy($sortField, $sortOrder);
-        }
-    }
-
-    // ----- Pagination or Full Data -----
-    if ($request->filled('paginate')) {
-        $perPage = (int) $request->get('paginate', 10);
-        $lawyers = $query->paginate($perPage);
-        $data = $lawyers->getCollection();
-    } else {
-        $data = $query->get();
-    }
-
-    // ----- Transform Data -----
-    $data->transform(function ($lawyer) use ($threshold) {
-        $isActive = false;
-
-        if ($lawyer->user && $lawyer->user->last_activity) {
-            $isActive = Carbon::parse($lawyer->user->last_activity)->greaterThanOrEqualTo($threshold);
-        }
+    // Transform data
+    $data = $lawyers->transform(function ($lawyer) use ($threshold) {
+        $isActive = optional($lawyer->user)->last_activity
+            ? Carbon::parse($lawyer->user->last_activity)->gte($threshold)
+            : false;
 
         return [
             'id' => $lawyer->id,
@@ -196,20 +154,10 @@ public function index(Request $request)
         ];
     });
 
-    // Filter only active lawyers if requested
-    if ($request->boolean('only_active')) {
-        $data = $data->filter(fn($l) => $l['is_active'])->values();
-    }
-
-    // Attach transformed data back if paginated
-    if (isset($lawyers)) {
-        $lawyers->setCollection($data);
-    }
-
-    // ----- Return Response -----
+    // Return response
     return response()->json([
         'success' => true,
-        'lawyers' => isset($lawyers) ? $lawyers : $data,
+        'lawyers' => $data,
     ]);
 }
 
@@ -335,7 +283,7 @@ private function formatLawyer($lawyer)
 
 
 
-    public function store(Request $request)
+    public function store1(Request $request)
     {
         // Validate input
         $validated = $request->validate([
@@ -361,6 +309,67 @@ private function formatLawyer($lawyer)
         $profile = LawyerProfile::create($validated);
         return response()->json($profile, 201);
     }
+
+
+    public function store(Request $request)
+{
+    // Validate input
+    $validated = $request->validate([
+        'user_id' => 'required|exists:users,id',
+        'cover_image' => 'nullable|file|image|max:2048',
+        'profile_image' => 'nullable|file|image|max:2048',
+        'amount' => 'nullable|numeric|decimal:0,2',
+        'description' => 'nullable|string',
+        'education' => 'nullable|string',
+        'specialty' => 'nullable|string',
+        'experience' => 'nullable|string',
+        'verified' => 'nullable|boolean',
+        'languages' => 'nullable|string',
+
+        // New fields
+        'id_or_passport' => 'nullable|string|max:255',
+        'proof_of_authorisation' => 'nullable|file|mimes:jpg,jpeg,png,pdf,doc,docx|max:4096',
+        'bar_association_id' => 'nullable|string|max:255',
+        'cv' => 'nullable|file|mimes:pdf,doc,docx|max:4096',
+        'signed_agreement' => 'nullable|file|mimes:pdf,jpg,jpeg,png,doc,docx|max:4096',
+        'areas_of_practice' => 'nullable|string',
+    ]);
+
+    // Store files in public/images/Lawyer
+    if ($request->hasFile('cover_image')) {
+        $coverImagePath = $request->file('cover_image')->store('images/Lawyer', 'public');
+        $validated['cover_image'] = $coverImagePath;
+    }
+
+    if ($request->hasFile('profile_image')) {
+        $profileImagePath = $request->file('profile_image')->store('images/Lawyer', 'public');
+        $validated['profile_image'] = $profileImagePath;
+    }
+
+    if ($request->hasFile('proof_of_authorisation')) {
+        $proofPath = $request->file('proof_of_authorisation')->store('images/Lawyer', 'public');
+        $validated['proof_of_authorisation'] = $proofPath;
+    }
+
+    if ($request->hasFile('cv')) {
+        $cvPath = $request->file('cv')->store('images/Lawyer', 'public');
+        $validated['cv'] = $cvPath;
+    }
+
+    if ($request->hasFile('signed_agreement')) {
+        $agreementPath = $request->file('signed_agreement')->store('images/Lawyer', 'public');
+        $validated['signed_agreement'] = $agreementPath;
+    }
+
+    // Create the lawyer profile
+    $profile = LawyerProfile::create($validated);
+
+    return response()->json([
+        'message' => 'Lawyer profile created successfully',
+        'data' => $profile,
+    ], 201);
+}
+
 
     public function show(LawyerProfile $lawyerProfile)
     {
@@ -438,5 +447,33 @@ public function getAuthLawyerProfile()
         'data' => $data
     ]);
 }
+
+
+//Get lawyer zoom link
+public function getZoomLink(Request $request, $appointment_id)
+    {
+        $lawyer = $request->user();
+
+        // Ensure only lawyer can access this route
+        if ($lawyer->role != 1) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        // Fetch the specific appointment meeting
+        $meeting = AppointmentMeeting::where('appointment_id', $appointment_id)
+            ->where('lawyer_id', $lawyer->id)
+            ->first();
+
+        if (!$meeting) {
+            return response()->json(['message' => 'Meeting not found'], 404);
+        }
+
+        return response()->json([
+            'appointment_id' => $meeting->appointment_id,
+            'user_id' => $meeting->user_id,
+            'zoom_link' => $meeting->zoom_link,
+            'host_link' => $meeting->host_link,
+        ]);
+    }
 
 }
