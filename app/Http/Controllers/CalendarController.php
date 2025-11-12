@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Calendar;
+use App\Models\LawyerProfile;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
@@ -67,4 +68,16 @@ class CalendarController extends Controller
         $calendar->delete();
         return response()->json(null, 204);
     }
+
+   public function filterLawyers(User $user)
+{
+    $lawyer = LawyerProfile::where('user_id', $user->id)->first();
+
+    if (!$lawyer) {
+        return response()->json(['message' => 'Lawyer not found'], 404);
+    }
+
+    $calendars = Calendar::where('lawyer_profile_id', $lawyer->id)->with('user', 'lawyerProfile')->get();
+    return response()->json($calendars);
+}
 }
