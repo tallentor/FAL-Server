@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\ZoomController;
+use App\Http\Controllers\ContactController;
 use App\Http\Controllers\CalendarController;
 use App\Http\Controllers\User\CaseController;
 use App\Http\Controllers\API\PaymentController;
@@ -13,6 +14,7 @@ use App\Http\Controllers\AppointmentController;
 use App\Http\Controllers\SystemPromptController;
 use App\Http\Controllers\User\ProfileController;
 use App\Http\Controllers\LawyerProfileController;
+use App\Http\Controllers\StripePaymentController;
 use App\Http\Controllers\Lawyer\LawyerCaseController;
 use App\Http\Controllers\Admin\AppointmentsController;
 use App\Http\Controllers\Admin\AssignLawyerController;
@@ -157,7 +159,7 @@ Route::get('/test-pusher', function () {
 Route::get('/all/lawyers', [LawyerProfileController::class, 'getAllLawyers']);
 
 Route::middleware('auth:sanctum')->group(function () {
-    Route::post('/appointments', [AppointmentController::class, 'store']);
+    Route::post('/appointments', [AppointmentController::class, 'storeAppointment']);
     Route::get('/lawyer/appointments', [AppointmentController::class, 'getMyAppointments']);
     Route::put('/appointments/{id}/approve', [AppointmentController::class, 'approveAppointment']);
 });
@@ -170,8 +172,38 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::post('/admin/appointments/{id}/payment-link', [AppointmentsController::class, 'addPaymentLink']);
 });
 
-// Get lawyer's zoom meeting link for an appointment
+// Get lawyer's zoom meeting link for view in lawyer appointment
 Route::middleware('auth:sanctum')->get(
     '/lawyer/appointments/{appointment_id}/meeting-links',
     [LawyerProfileController::class, 'getZoomLink']
 );
+
+// Submit contact form
+Route::post('/contact', [ContactController::class, 'store']);
+
+
+
+// Protected routes (requires authentication)
+Route::middleware('auth:sanctum')->group(function () {
+
+    // Payment routes
+    Route::prefix('payments')->group(function () {
+        // Create payment intent for an appointment
+        Route::post('/appointments/{appointmentId}/create-intent', [StripePaymentController::class, 'createPaymentIntent']);
+
+        // Confirm payment after Stripe payment succeeds
+        Route::post('/appointments/{appointmentId}/confirm', [StripePaymentController::class, 'confirmPayment']);
+
+        // Get payment details for an appointment
+        Route::get('/appointments/{appointmentId}', [StripePaymentController::class, 'getPaymentDetails']);
+
+        // Get all payments for authenticated user (as client)
+        Route::get('/my-payments', [StripePaymentController::class, 'getUserPayments']);
+
+        // Get all payments received by lawyer
+        Route::get('/lawyer-earnings', [StripePaymentController::class, 'getLawyerPayments']);
+    });
+});
+
+// Stripe webhook (no authentication needed)
+Route::post('/webhooks/stripe', [StripePaymentController::class, 'webhook']);
