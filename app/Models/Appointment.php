@@ -29,6 +29,7 @@ class Appointment extends Model
         'number_of_dependents',
         'additional_notes',
         'status',
+        'payment_status',
     ];
 
     // Client who booked the appointment
@@ -48,4 +49,9 @@ class Appointment extends Model
     {
         return $this->hasOne(LawyerProfile::class, 'user_id', 'lawyer_id');
     }
+
+    public function payment()
+{
+    return $this->hasOne(StripePayment::class);
+}
 }
