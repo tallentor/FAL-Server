@@ -15,11 +15,11 @@ return [
     |
     */
 
-    'paths' => ['api/*', 'sanctum/csrf-cookie', 'login', 'logout'],
+    'paths' => ['api/*', 'sanctum/csrf-cookie', 'login', 'logout', '/appointments', '/lawyer_profiles'],
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => ['http://localhost:5173','https://e38e9ec251a7.ngrok-free.app'],
+    'allowed_origins' => ['http://localhost:5173','https://e38e9ec251a7.ngrok-free.app', 'https://hotline.lk'],
 
     'allowed_origins_patterns' => [],
 
