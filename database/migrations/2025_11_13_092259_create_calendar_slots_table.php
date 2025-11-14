@@ -13,11 +13,8 @@ return new class extends Migration
     {
        Schema::create('calendar_slots', function (Blueprint $table) {
             $table->id();
-            $table->foreignIdFor(\App\Models\Calendar::class)->constrained()->cascadeOnDelete();
-            $table->date('day');
-            $table->json('slot_1')->nullable();
-            $table->json('slot_2')->nullable();
-            $table->json('slot_3')->nullable();
+            $table->foreignIdFor(\App\Models\LawyerProfile::class)->constrained()->cascadeOnDelete();
+            $table->json('day');
             $table->timestamps();
         });
 

@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use App\Models\LawyerProfile;
+
+use App\Models\User;
 use App\Models\AppointmentMeeting;
 use Illuminate\Support\Facades\Auth;
 
@@ -448,6 +450,13 @@ public function getAuthLawyerProfile()
     ]);
 }
 
+public function getLawyerByUser(User $user){
+
+    $lawyer = LawyerProfile::where('user_id' , $user->id)->first();
+
+    return response()->json($lawyer);
+
+}
 
 //Get lawyer zoom link
 public function getZoomLink(Request $request, $appointment_id)
