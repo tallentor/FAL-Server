@@ -37,6 +37,7 @@ return new class extends Migration
             $table->integer('number_of_dependents')->nullable();
             $table->text('additional_notes')->nullable();
             $table->enum('status', ['pending', 'approved', 'rejected'])->default('pending');
+            $table->string('payment_status', 20)->default('pending');
             $table->timestamps();
         });
     }

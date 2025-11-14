@@ -190,7 +190,7 @@ class AuthController extends Controller
     }
 
     // Update last activity and mark as active if the user is a lawyer
-    if ($user->role == 1) { // assuming role 1 = lawyer
+    if ($user->role == 1) {
         $user->last_activity = now();
         $user->is_active = true;
         $user->save();
