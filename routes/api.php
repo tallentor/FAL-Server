@@ -18,6 +18,8 @@ use App\Http\Controllers\Admin\AssignLawyerController;
 use App\Http\Controllers\Lawyer\ActiveLawyerController;
 use Illuminate\Foundation\Auth\EmailVerificationRequest;
 use App\Http\Controllers\Admin\CasesNotificationController;
+use App\Http\Controllers\CalendarSlotController;
+use App\Models\CalendarSlot;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -72,10 +74,24 @@ Route::post('/chat/send', [ChatController::class, 'sendMessage']);
 
 Route::get('/lawyer_profiles',[LawyerProfileController::class , 'index']);
 Route::post('/lawyer_profiles',[LawyerProfileController::class , 'store']);
+
+Route::get('/lawyer/{user}',[LawyerProfileController::class , 'getLawyerByUser']);
+
+
 Route::apiResource('system_prompts', SystemPromptController::class);
 
 Route::apiResource('calendars', CalendarController::class);
 Route::get('/calendars/lawyers/{user}', [CalendarController::class, 'filterLawyers']);
+
+    // Lawyer can create/update their available slots
+Route::post('/calendar-slots', [CalendarSlotController::class, 'upsertSlots']);
+
+// Delete a specific slot
+Route::delete('/calendar-slots', [CalendarSlotController::class, 'deleteSlot']);
+
+// Public route to get lawyer's available slots
+Route::get('/calendar-slots/{lawyerId}', [CalendarSlotController::class, 'getSlots']);
+
 
  Route::middleware(['auth:sanctum','last_activity'])->group(function () {
     Route::get('/lawyer/profile', [LawyerProfileController::class, 'getAuthLawyerProfile']);

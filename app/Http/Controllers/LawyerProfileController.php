@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\LawyerProfile;
+use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
 
@@ -437,6 +438,14 @@ public function getAuthLawyerProfile()
         'success' => true,
         'data' => $data
     ]);
+}
+
+public function getLawyerByUser(User $user){
+
+    $lawyer = LawyerProfile::where('user_id' , $user->id)->first();
+
+    return response()->json($lawyer);
+
 }
 
 }
