@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\User;
 use Illuminate\Http\Request;
 use App\Events\TestPusherEvent;
 use Illuminate\Support\Facades\Route;
@@ -53,11 +54,27 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 });
 
-// Verify email callback
-    Route::get('/email/verify/{id}/{hash}', function (EmailVerificationRequest $request) {
-        $request->fulfill();
-        return response()->json(['message' => 'Email verified successfully']);
-    })->middleware(['signed'])->name('verification.verify');
+// This route does NOT need auth:sanctum
+Route::get('/email/verify/{id}/{hash}', function (Request $request, $id, $hash) {
+    $user = User::find($id);
+
+    if (! $user) {
+        return redirect('https://hotline.lk/login?message=UserNotFound');
+    }
+
+    if (! hash_equals(sha1($user->getEmailForVerification()), $hash)) {
+        return redirect('https://hotline.lk/login?message=InvalidLink');
+    }
+
+    if ($user->hasVerifiedEmail()) {
+        return redirect('https://hotline.lk/login?message=AlreadyVerified');
+    }
+
+    $user->markEmailAsVerified();
+
+    // Redirect to login page after success
+    return redirect('https://hotline.lk/login?message=EmailVerified');
+})->name('verification.verify')->middleware('signed');
 
 
 Route::get('/approve-user', [AuthController::class, 'getPendingUsers']);
@@ -188,20 +205,26 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Payment routes
     Route::prefix('payments')->group(function () {
-        // Create payment intent for an appointment
-        Route::post('/appointments/{appointmentId}/create-intent', [StripePaymentController::class, 'createPaymentIntent']);
 
-        // Confirm payment after Stripe payment succeeds
-        Route::post('/appointments/{appointmentId}/confirm', [StripePaymentController::class, 'confirmPayment']);
+        // Create Stripe Checkout session (redirect url)
+        Route::post('/appointments/{appointmentId}/checkout',
+            [StripePaymentController::class, 'createCheckoutSession']);
+
+        // Confirm payment after redirect success
+        Route::post('/confirm',
+            [StripePaymentController::class, 'confirmPayment']);
 
         // Get payment details for an appointment
-        Route::get('/appointments/{appointmentId}', [StripePaymentController::class, 'getPaymentDetails']);
+        Route::get('/appointments/{appointmentId}',
+            [StripePaymentController::class, 'getPaymentDetails']);
 
         // Get all payments for authenticated user (as client)
-        Route::get('/my-payments', [StripePaymentController::class, 'getUserPayments']);
+        Route::get('/my-payments',
+            [StripePaymentController::class, 'getUserPayments']);
 
         // Get all payments received by lawyer
-        Route::get('/lawyer-earnings', [StripePaymentController::class, 'getLawyerPayments']);
+        Route::get('/lawyer-earnings',
+            [StripePaymentController::class, 'getLawyerPayments']);
     });
 });
 

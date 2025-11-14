@@ -4,12 +4,15 @@ namespace App\Http\Controllers;
 
 use Exception;
 use Stripe\Stripe;
-use App\Models\Payment;
-use Stripe\PaymentIntent;
-use App\Models\Appointment;
+use Stripe\Checkout\Session;
 use Illuminate\Http\Request;
-use App\Models\StripePayment;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Mail;
+use App\Models\StripePayment;
+use App\Models\Appointment;
+use App\Mail\PaymentSuccessMail;
+use App\Mail\PaymentFailedMail;
+use App\Mail\AdminPaymentNotificationMail;
 
 class StripePaymentController extends Controller
 {
@@ -19,225 +22,104 @@ class StripePaymentController extends Controller
     }
 
     /**
-     * Create payment intent for an appointment
+     * Create Stripe Checkout Session
      */
-    public function createPaymentIntent1(Request $request, $appointmentId)
+    public function createCheckoutSession(Request $request, $appointmentId)
     {
         try {
             $request->validate([
                 'amount' => 'required|numeric|min:1',
             ]);
 
-            $appointment = Appointment::with(['lawyer', 'lawyerProfile'])->findOrFail($appointmentId);
+            $appointment = Appointment::findOrFail($appointmentId);
 
-            // Check if user owns this appointment
             if ($appointment->user_id !== Auth::id()) {
-                return response()->json([
-                    'message' => 'Unauthorized. This appointment does not belong to you.'
-                ], 403);
+                return response()->json(['message' => 'Unauthorized'], 403);
             }
 
-            // Check if payment already exists for this appointment
-            $existingPayment = StripePayment::where('appointment_id', $appointmentId)
+            // Prevent double payment
+            $existing = StripePayment::where('appointment_id', $appointmentId)
                 ->where('status', 'succeeded')
                 ->first();
 
-            if ($existingPayment) {
-                return response()->json([
-                    'message' => 'Payment already completed for this appointment.'
-                ], 422);
+            if ($existing) {
+                return response()->json(['message' => 'Payment already completed'], 422);
             }
 
-            // Create Stripe Payment Intent
-            $paymentIntent = PaymentIntent::create([
-                'amount' => $request->amount * 100, // in cents 
-                'currency' => $request->currency ?? 'usd',
-                'metadata' => [
-                    'appointment_id' => $appointmentId,
-                    'user_id' => Auth::id(),
-                    'lawyer_id' => $appointment->lawyer_id,
-                    'lawyer_name' => $appointment->lawyer->name ?? 'Unknown',
-                ],
-                'description' => "Appointment payment for {$appointment->case_title}",
+            // Create Stripe Checkout session
+            $session = Session::create([
+                'payment_method_types' => ['card'],
+                'line_items' => [[
+                    'price_data' => [
+                        'currency' => $request->currency ?? 'usd',
+                        'product_data' => [
+                            'name' => "Appointment Payment - {$appointment->case_title}",
+                        ],
+                        'unit_amount' => $request->amount * 100,
+                    ],
+                    'quantity' => 1,
+                ]],
+                'mode' => 'payment',
+                'success_url' => env('FRONTEND_URL') . '/payment-success?session_id={CHECKOUT_SESSION_ID}',
+                'cancel_url'  => env('FRONTEND_URL') . '/payment-cancel',
             ]);
 
-            // Create payment record
-            $payment = StripePayment::create([
+            // Store session ID in stripe_payment_intent_id 
+            StripePayment::create([
                 'appointment_id' => $appointmentId,
                 'user_id' => Auth::id(),
                 'lawyer_id' => $appointment->lawyer_id,
                 'amount' => $request->amount,
                 'currency' => $request->currency ?? 'usd',
-                'stripe_payment_intent_id' => $paymentIntent->id,
+                'stripe_payment_intent_id' => $session->id, // session id stored here
                 'status' => 'pending',
-                'payment_metadata' => [
-                    'appointment_title' => $appointment->case_title,
-                    'lawyer_name' => $appointment->lawyer->name ?? 'Unknown',
-                ],
             ]);
 
-            return response()->json([
-                'message' => 'Payment intent created successfully',
-                'client_secret' => $paymentIntent->client_secret,
-                'payment_intent_id' => $paymentIntent->id,
-                'payment' => $payment,
-            ], 200);
+            return response()->json(['url' => $session->url]);
 
         } catch (Exception $e) {
             return response()->json([
-                'message' => 'Error creating payment intent',
+                'message' => 'Error creating checkout session',
                 'error' => $e->getMessage(),
             ], 500);
         }
     }
 
-
-    // Inside StripePaymentController
-public function createPaymentIntent(Request $request, $appointmentId)
-{
-    try {
-        //  Validate request
-        $request->validate([
-            'amount' => 'required|numeric|min:1',
-            'currency' => 'nullable|string',
-        ]);
-
-        //  Get appointment and check ownership
-        $appointment = Appointment::with(['lawyer', 'lawyerProfile'])->findOrFail($appointmentId);
-
-        if ($appointment->user_id !== Auth::id()) {
-            return response()->json([
-                'message' => 'Unauthorized. This appointment does not belong to you.'
-            ], 403);
-        }
-
-        //  Check if payment already succeeded
-        $existingPayment = StripePayment::where('appointment_id', $appointmentId)
-            ->where('status', 'succeeded')
-            ->first();
-
-        if ($existingPayment) {
-            return response()->json([
-                'message' => 'Payment already completed for this appointment.'
-            ], 422);
-        }
-
-        //  Create Stripe PaymentIntent (backend-only, no redirect)
-        \Stripe\Stripe::setApiKey(config('services.stripe.secret'));
-
-        $paymentIntent = \Stripe\PaymentIntent::create([
-            'amount' => $request->amount * 100, // cents
-            'currency' => $request->currency ?? 'usd',
-            'payment_method' => 'pm_card_visa', // Stripe test card
-            'confirm' => true, // confirm immediately
-            'automatic_payment_methods' => [
-                'enabled' => true,
-                'allow_redirects' => 'never', // important for backend-only
-            ],
-            'metadata' => [
-                'appointment_id' => $appointmentId,
-                'user_id' => Auth::id(),
-                'lawyer_id' => $appointment->lawyer_id,
-                'lawyer_name' => $appointment->lawyer->name ?? 'Unknown',
-            ],
-            'description' => "Appointment payment for {$appointment->case_title}",
-        ]);
-
-        //  Save payment in DB
-        $payment = StripePayment::create([
-            'appointment_id' => $appointmentId,
-            'user_id' => Auth::id(),
-            'lawyer_id' => $appointment->lawyer_id,
-            'amount' => $request->amount,
-            'currency' => $request->currency ?? 'usd',
-            'stripe_payment_intent_id' => $paymentIntent->id,
-            'status' => $paymentIntent->status,
-            'payment_metadata' => [
-                'appointment_title' => $appointment->case_title,
-                'lawyer_name' => $appointment->lawyer->name ?? 'Unknown',
-            ],
-            'paid_at' => $paymentIntent->status === 'succeeded' ? now() : null,
-        ]);
-
-        //  Update appointment status if payment succeeded
-        if ($paymentIntent->status === 'succeeded') {
-            $appointment->update([
-                'payment_status' => 'paid',
-
-            ]);
-        }
-
-        //  Return response
-        return response()->json([
-            'message' => 'Payment processed successfully',
-            'payment_status' => $paymentIntent->status,
-            'payment' => $payment,
-            'appointment_status' => $appointment->payment_status,
-        ], 200);
-
-    } catch (\Exception $e) {
-        return response()->json([
-            'message' => 'Error processing payment',
-            'error' => $e->getMessage(),
-        ], 500);
-    }
-}
-
-
-
     /**
-     * Confirm payment after successful Stripe payment
+     * Confirm Payment After Redirect
      */
-    public function confirmPayment(Request $request, $appointmentId)
+    public function confirmPayment(Request $request)
     {
         try {
             $request->validate([
-                'payment_intent_id' => 'required|string',
+                'session_id' => 'required|string',
             ]);
 
-            $appointment = Appointment::findOrFail($appointmentId);
+            $session = Session::retrieve($request->session_id);
 
-            // Check if user owns this appointment
-            if ($appointment->user_id !== Auth::id()) {
+            if ($session->payment_status !== 'paid') {
                 return response()->json([
-                    'message' => 'Unauthorized.'
-                ], 403);
+                    'message' => 'Payment not completed',
+                    'status' => $session->payment_status
+                ], 422);
             }
 
-            // Retrieve the payment from database
-            $payment = StripePayment::where('appointment_id', $appointmentId)
-                ->where('stripe_payment_intent_id', $request->payment_intent_id)
-                ->firstOrFail();
+            $payment = StripePayment::where('stripe_payment_intent_id', $session->id)->firstOrFail();
 
-            // Retrieve payment intent from Stripe
-            $paymentIntent = PaymentIntent::retrieve($request->payment_intent_id);
+            if ($payment->status !== 'succeeded') {
 
-            if ($paymentIntent->status === 'succeeded') {
-                // Update payment record
                 $payment->update([
-                    'status' => 'succeeded',
-                    'stripe_charge_id' => $paymentIntent->charges->data[0]->id ?? null,
-                    'payment_method' => $paymentIntent->charges->data[0]->payment_method_details->type ?? null,
+                    'status'  => 'succeeded',
                     'paid_at' => now(),
                 ]);
 
-                // Update appointment status
-                $appointment->update([
-                    'payment_status' => 'confirmed',
-                ]);
-
-                return response()->json([
-                    'message' => 'Payment confirmed successfully',
-                    'payment' => $payment->load(['appointment', 'lawyer']),
-                ], 200);
-            } else {
-                $payment->update(['status' => 'failed']);
-
-                return response()->json([
-                    'message' => 'Payment was not successful',
-                    'status' => $paymentIntent->status,
-                ], 422);
+                $payment->appointment->update(['payment_status' => 'confirmed']);
             }
+
+            return response()->json([
+                'message' => 'Payment confirmed.',
+                'payment' => $payment->load(['appointment', 'lawyer'])
+            ]);
 
         } catch (Exception $e) {
             return response()->json([
@@ -248,18 +130,17 @@ public function createPaymentIntent(Request $request, $appointmentId)
     }
 
     /**
-     * Get payment details for an appointment
+     * Get Payment Details
      */
     public function getPaymentDetails($appointmentId)
     {
         try {
             $appointment = Appointment::findOrFail($appointmentId);
 
-            // Check if user owns this appointment or is the lawyer
-            if ($appointment->user_id !== Auth::id() && $appointment->lawyer_id !== Auth::id()) {
-                return response()->json([
-                    'message' => 'Unauthorized.'
-                ], 403);
+            if ($appointment->user_id !== Auth::id()
+                && $appointment->lawyer_id !== Auth::id()
+            ) {
+                return response()->json(['message' => 'Unauthorized'], 403);
             }
 
             $payment = StripePayment::with(['appointment', 'user', 'lawyer'])
@@ -268,7 +149,7 @@ public function createPaymentIntent(Request $request, $appointmentId)
 
             if (!$payment) {
                 return response()->json([
-                    'message' => 'No payment found for this appointment.',
+                    'message' => 'No payment found.',
                     'has_payment' => false,
                 ], 404);
             }
@@ -276,18 +157,18 @@ public function createPaymentIntent(Request $request, $appointmentId)
             return response()->json([
                 'payment' => $payment,
                 'has_payment' => true,
-            ], 200);
+            ]);
 
         } catch (Exception $e) {
             return response()->json([
-                'message' => 'Error retrieving payment details',
+                'message' => 'Error retrieving payment',
                 'error' => $e->getMessage(),
             ], 500);
         }
     }
 
     /**
-     * Get all payments for authenticated user (as client)
+     * User Payments
      */
     public function getUserPayments()
     {
@@ -296,13 +177,11 @@ public function createPaymentIntent(Request $request, $appointmentId)
             ->orderBy('created_at', 'desc')
             ->get();
 
-        return response()->json([
-            'payments' => $payments,
-        ], 200);
+        return response()->json(['payments' => $payments]);
     }
 
     /**
-     * Get all payments received by lawyer
+     * Lawyer Payments
      */
     public function getLawyerPayments()
     {
@@ -315,70 +194,86 @@ public function createPaymentIntent(Request $request, $appointmentId)
         return response()->json([
             'payments' => $payments,
             'total_earned' => $payments->sum('amount'),
-        ], 200);
+        ]);
     }
 
     /**
-     * Webhook handler for Stripe events
+     * Webhook Listener
      */
     public function webhook(Request $request)
     {
         $endpoint_secret = config('services.stripe.webhook_secret');
 
-        $payload = $request->getContent();
-        $sig_header = $request->header('Stripe-Signature');
-
         try {
-            $event = \Stripe\Webhook::constructEvent($payload, $sig_header, $endpoint_secret);
+            $event = \Stripe\Webhook::constructEvent(
+                $request->getContent(),
+                $request->header('Stripe-Signature'),
+                $endpoint_secret
+            );
 
-            // Handle the event
             switch ($event->type) {
-                case 'payment_intent.succeeded':
-                    $paymentIntent = $event->data->object;
-                    $this->handlePaymentIntentSucceeded($paymentIntent);
+
+                case 'checkout.session.completed':
+                    $this->handleCheckoutSuccess($event->data->object);
                     break;
 
+                case 'checkout.session.async_payment_failed':
                 case 'payment_intent.payment_failed':
-                    $paymentIntent = $event->data->object;
-                    $this->handlePaymentIntentFailed($paymentIntent);
-                    break;
-
-                default:
-                    // Unexpected event type
+                    $this->handleCheckoutFailed($event->data->object);
                     break;
             }
 
-            return response()->json(['status' => 'success'], 200);
+            return response()->json(['received' => true]);
 
-        } catch (\UnexpectedValueException $e) {
-            return response()->json(['error' => 'Invalid payload'], 400);
-        } catch (\Stripe\Exception\SignatureVerificationException $e) {
-            return response()->json(['error' => 'Invalid signature'], 400);
+        } catch (Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 400);
         }
     }
 
-    private function handlePaymentIntentSucceeded($paymentIntent)
+    /**
+     * SUCCESS Handler
+     */
+    private function handleCheckoutSuccess($session)
     {
-        $payment = StripePayment::where('stripe_payment_intent_id', $paymentIntent->id)->first();
+        $payment = StripePayment::where('stripe_payment_intent_id', $session->id)->first();
 
-        if ($payment) {
+        if ($payment && $payment->status !== 'succeeded') {
+
             $payment->update([
                 'status' => 'succeeded',
-                'stripe_charge_id' => $paymentIntent->charges->data[0]->id ?? null,
                 'paid_at' => now(),
             ]);
 
-            // Update appointment status
-            $payment->appointment->update(['status' => 'confirmed']);
+            $payment->appointment->update(['payment_status' => 'confirmed']);
+
+            // Notify User
+            Mail::to($payment->appointment->user->email)
+                ->send(new PaymentSuccessMail($payment));
+
+            // Notify Admin
+            Mail::to(config('services.admin.email'))
+                ->send(new AdminPaymentNotificationMail($payment));
         }
     }
 
-    private function handlePaymentIntentFailed($paymentIntent)
+    /**
+     * FAILED Handler
+     */
+    private function handleCheckoutFailed($session)
     {
-        $payment = StripePayment::where('stripe_payment_intent_id', $paymentIntent->id)->first();
+        $payment = StripePayment::where('stripe_payment_intent_id', $session->id)->first();
 
         if ($payment) {
             $payment->update(['status' => 'failed']);
+            $payment->appointment->update(['payment_status' => 'failed']);
+
+            // Notify User
+            Mail::to($payment->appointment->user->email)
+                ->send(new PaymentFailedMail($payment));
+
+            // Notify Admin
+            Mail::to(config('services.admin.email'))
+                ->send(new AdminPaymentNotificationMail($payment));
         }
     }
 }
