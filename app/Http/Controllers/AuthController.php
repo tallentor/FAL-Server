@@ -52,7 +52,7 @@ class AuthController extends Controller
     $fields = $request->validate([
         'name' => 'required',
         'email' => 'required|email|unique:users|unique:pending_users',
-        'phone_number' => ['required', 'string', 'max:20', 'unique:users,phone_number', 'unique:pending_users,phone_number'],
+        'phone_number' => ['required', 'string', 'max:20', 'unique:users,phone_number', 'unique:pending_users,phone_number','regex:/^(0\d{9})$/'],
         'role' => ['required', Rule::in([0, 1, 2])],
         'password' => 'required|confirmed'
     ]);
