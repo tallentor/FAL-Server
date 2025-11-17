@@ -7,19 +7,22 @@ use Illuminate\Database\Eloquent\Model;
 
 class CalendarSlot extends Model
 {
-    /** @use HasFactory<\Database\Factories\CalendarSlotFactory> */
     use HasFactory;
 
-    protected $fillable = ['calendar_id', 'day', 'slot_1', 'slot_2', 'slot_3'];
-
-    protected $casts = [
-        'slot_1' => 'array',
-        'slot_2' => 'array',
-        'slot_3' => 'array',
+    protected $fillable = [
+        'lawyer_profile_id',
+        'day'
     ];
 
-    public function calendar()
+    protected $casts = [
+        'day' => 'array'
+    ];
+
+    /**
+     * Get the lawyer profile that owns the calendar slot
+     */
+    public function lawyerProfile()
     {
-        return $this->belongsTo(Calendar::class);
+        return $this->belongsTo(LawyerProfile::class);
     }
 }

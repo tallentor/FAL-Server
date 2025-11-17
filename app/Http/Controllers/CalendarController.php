@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Calendar;
 use App\Models\LawyerProfile;
 use App\Models\User;
+use App\Models\CalendarSlot;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 
@@ -33,6 +34,37 @@ class CalendarController extends Controller
         ]);
 
         $calendar = Calendar::create($validated);
+
+        $calendarSlot = CalendarSlot::where('lawyer_profile_id', $validated['lawyer_profile_id'])
+            ->latest()
+            ->first();
+
+        if ($calendarSlot) {
+            $days = $calendarSlot->day;
+            $bookedDate = Carbon::parse($validated['date'])->format('Y-m-d');
+            $bookedTime = Carbon::parse($validated['time'])->format('H:i');
+
+            // Find and update the specific date's time slots
+            foreach ($days as $key => $day) {
+                if ($day['date'] === $bookedDate) {
+                    // Remove the booked time from the times array
+                    $days[$key]['times'] = array_values(
+                        array_filter($day['times'], function($time) use ($bookedTime) {
+                            return $time !== $bookedTime;
+                        })
+                    );
+
+                    // If no times left for this date, remove the entire date entry
+                    if (empty($days[$key]['times'])) {
+                        unset($days[$key]);
+                    }
+                    break;
+                }
+            }
+
+            $calendarSlot->day = array_values($days);
+            $calendarSlot->save();
+        }
 
         return response()->json($calendar->load('user', 'lawyerProfile'), 201);
     }
