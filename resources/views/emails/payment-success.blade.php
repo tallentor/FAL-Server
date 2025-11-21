@@ -8,67 +8,135 @@
 </head>
 
 <body
-    style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f4f7fa;">
-    <table role="presentation" style="width: 100%; border-collapse: collapse;">
+    style="margin: 0; padding: 0; background-color: #f4f7fa; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;">
+
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse;">
         <tr>
             <td style="padding: 40px 20px;">
-                <table role="presentation"
-                    style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); overflow: hidden;">
-                    <!-- Header -->
+
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+                    style="max-width: 600px; margin: 0 auto; border-radius: 14px; background: #ffffff; overflow: hidden; box-shadow: 0px 4px 12px rgba(0,0,0,0.08);">
+
+                    <!-- HEADER -->
                     <tr>
                         <td
-                            style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 40px 40px 30px; text-align: center;">
-                            <div style="margin-bottom: 12px;">
-                                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="white"
-                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                                    style="display: inline-block;">
-                                    <circle cx="12" cy="12" r="10"></circle>
-                                    <polyline points="16 8 10 14 8 12"></polyline>
-                                </svg>
+                            style="background: linear-gradient(135deg, #c41019 0%, #a00d15 100%); padding: 25px 40px; position: relative; overflow: hidden;">
+
+                            <!-- Decorative Shapes -->
+                            <div
+                                style="position: absolute; top: -40px; right: -40px; width: 120px; height: 120px; background: rgba(255,255,255,0.08); border-radius: 50%; pointer-events: none;">
                             </div>
-                            <h1
-                                style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 600; letter-spacing: -0.5px;">
-                                Payment Successful</h1>
+                            <div
+                                style="position: absolute; bottom: -20px; left: -20px; width: 100px; height: 100px; background: rgba(255,255,255,0.06); border-radius: 50%; pointer-events: none;">
+                            </div>
+                            <div
+                                style="position: absolute; top: 35%; right: 15%; width: 50px; height: 50px; background: rgba(255,255,255,0.05); transform: translateY(-50%) rotate(45deg); pointer-events: none;">
+                            </div>
+
+                            <!-- LOGO (Aligned Left Top) -->
+                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+                                style="position: relative; z-index: 1;">
+                                <tr>
+                                    <td>
+                                        <img src="https://i.postimg.cc/8C8KbwrM/Hotline-lk-Logo-PNG-(1).png"
+                                            alt="Hotline.lk Logo"
+                                            style="width: 120px; height: auto; margin-bottom: 15px; display: block; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));">
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <!-- SUCCESS ROW -->
+                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+                                style="position: relative; z-index: 1;">
+                                <tr>
+                                    <td style="text-align: center; padding: 5px 0 0;">
+
+                                        <!-- Success Icon with Circle Background -->
+                                        <div
+                                            style="display: inline-block; background: rgba(255,255,255,0.15); border-radius: 50%; padding: 10px; margin-bottom: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.2), 0 0 0 5px rgba(255,255,255,0.08);">
+                                            <svg width="40" height="40" viewBox="0 0 24 24" fill="none"
+                                                stroke="white" stroke-width="2.5" stroke-linecap="round"
+                                                stroke-linejoin="round" style="display: block;">
+                                                <circle cx="12" cy="12" r="10"
+                                                    fill="rgba(255,255,255,0.2)"></circle>
+                                                <polyline points="16 8 10 14 8 12"></polyline>
+                                            </svg>
+                                        </div>
+
+                                        <!-- Heading -->
+                                        <div>
+                                            <h1
+                                                style="margin: 0; color: #ffffff; font-size: 26px; font-weight: 700; letter-spacing: -0.5px; text-shadow: 0 2px 4px rgba(0,0,0,0.2);">
+                                                Payment Successful
+                                            </h1>
+                                            <p
+                                                style="margin: 5px 0 0; color: rgba(255,255,255,0.9); font-size: 13px; font-weight: 400;">
+                                                Your transaction has been completed
+                                            </p>
+                                        </div>
+
+                                    </td>
+                                </tr>
+                            </table>
+
                         </td>
                     </tr>
 
-                    <!-- Content -->
+                    <!-- CONTENT -->
                     <tr>
                         <td style="padding: 40px;">
-                            <p style="margin: 0 0 24px; color: #2d3748; font-size: 16px; line-height: 1.6;">Dear
-                                {{ $appointment->user->name }},</p>
 
-                            <p style="margin: 0 0 32px; color: #2d3748; font-size: 16px; line-height: 1.6;">
-                                Your payment of <strong style="color: #1a202c;">{{ $payment->amount }}
-                                    {{ $payment->currency }}</strong> for appointment <strong
-                                    style="color: #1a202c;">"{{ $appointment->case_title }}"</strong> has been
-                                successfully received.
+                            <p style="font-size: 16px; color: #2d3748; margin: 0 0 20px; line-height: 1.6;">
+                                Dear <strong>{{ $appointment->user->name }}</strong>,
                             </p>
 
-                            <div
-                                style="background-color: #ecfdf5; border-left: 4px solid #10b981; padding: 16px 20px; border-radius: 6px; margin-bottom: 32px;">
-                                <p style="margin: 0; color: #065f46; font-size: 15px; line-height: 1.6;">
-                                    <strong>✓ Confirmed:</strong> Your appointment is now confirmed and scheduled.
-                                </p>
-                            </div>
+                            <p style="font-size: 16px; color: #2d3748; margin: 0 0 28px; line-height: 1.6;">
+                                We have successfully received your payment of
+                                <strong style="color: #c41019;">{{ $payment->amount }} {{ $payment->currency }}</strong>
+                                for the appointment titled
+                                <strong style="color: #c41019;">"{{ $appointment->case_title }}"</strong>.
+                            </p>
 
-                            <p style="margin: 0; color: #2d3748; font-size: 16px; line-height: 1.6;">Thank you!</p>
+                            <!-- GREEN CONFIRMATION BOX -->
+                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+                                style="margin-bottom: 30px;">
+                                <tr>
+                                    <td
+                                        style="background-color: #e6f9eb; border-left: 4px solid #22c55e; padding: 18px 20px; border-radius: 6px;">
+                                        <p style="margin: 0; color: #166534; font-size: 15px; line-height: 1.6;">
+                                            <strong>✓ Appointment Confirmed:</strong>
+                                            Your booking is now confirmed and scheduled.
+                                        </p>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <p style="margin: 0; color: #2d3748; font-size: 16px; line-height: 1.6;">
+                                Thank you for choosing our service!
+                            </p>
+
                         </td>
                     </tr>
 
-                    <!-- Footer -->
+                    <!-- FOOTER -->
                     <tr>
                         <td
-                            style="padding: 30px 40px; background-color: #f7fafc; border-top: 1px solid #e2e8f0; text-align: center;">
-                            <p style="margin: 0; color: #718096; font-size: 13px; line-height: 1.5;">
-                                We look forward to seeing you at your appointment.
+                            style="background: #fafafa; padding: 28px 40px; text-align: center; border-top: 1px solid #e5e7eb;">
+                            <p style="margin: 0; font-size: 13px; color: #6b7280; line-height: 1.5;">
+                                We look forward to assisting you at your appointment.
+                            </p>
+                            <p style="margin: 8px 0 0; font-size: 12px; color: #9ca3af;">
+                                Hotline.lk · All Rights Reserved
                             </p>
                         </td>
                     </tr>
+
                 </table>
+
             </td>
         </tr>
     </table>
+
 </body>
 
 </html>

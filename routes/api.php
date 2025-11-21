@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\User;
+use App\Models\CalendarSlot;
 use Illuminate\Http\Request;
 use App\Events\TestPusherEvent;
 use Illuminate\Support\Facades\Route;
@@ -12,24 +13,26 @@ use App\Http\Controllers\CalendarController;
 use App\Http\Controllers\User\CaseController;
 use App\Http\Controllers\API\PaymentController;
 use App\Http\Controllers\AppointmentController;
+use App\Http\Controllers\CalendarSlotController;
 use App\Http\Controllers\SystemPromptController;
 use App\Http\Controllers\User\ProfileController;
 use App\Http\Controllers\LawyerProfileController;
 use App\Http\Controllers\StripePaymentController;
+use App\Http\Controllers\Admin\AnalyticsController;
 use App\Http\Controllers\Lawyer\LawyerCaseController;
 use App\Http\Controllers\Admin\AppointmentsController;
 use App\Http\Controllers\Admin\AssignLawyerController;
 use App\Http\Controllers\Lawyer\ActiveLawyerController;
 use Illuminate\Foundation\Auth\EmailVerificationRequest;
 use App\Http\Controllers\Admin\CasesNotificationController;
-use App\Http\Controllers\CalendarSlotController;
-use App\Models\CalendarSlot;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
 })->middleware(['auth:sanctum', 'verified']);
 
 Route::post('/register',[AuthController::class,'register']);
+//Route::post('/register/user', [AuthController::class, 'registerUser']);
+//Route::post('/register/lawyer', [AuthController::class, 'registerLawyer']);
 Route::post('/login',[AuthController::class,'login'])->name('login')->middleware('last_activity');
 Route::post('/logout',[AuthController::class,'logout'])->middleware('auth:sanctum');
 Route::get('/users',[AuthController::class,'getAllUsers'])->middleware('auth:sanctum');
@@ -199,7 +202,7 @@ Route::get('/all/lawyers', [LawyerProfileController::class, 'getAllLawyers']);
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/appointments', [AppointmentController::class, 'storeAppointment']);
-    Route::get('/lawyer/appointments', [AppointmentController::class, 'getMyAppointments']);
+    Route::get('/appointments/lawyer', [AppointmentController::class, 'getMyAppointments']);
     Route::put('/appointments/{id}/approve', [AppointmentController::class, 'approveAppointment']);
 });
 
@@ -207,13 +210,16 @@ Route::middleware('auth:sanctum')->group(function () {
 //Route::middleware(['auth:sanctum', 'admin'])->get('/admin/appointments/approved', [AppointmentsController::class, 'getApprovedAppointments']);
 
 Route::middleware(['auth:sanctum', 'admin'])->group(function () {
-    Route::get('/admin/appointments/approved', [AppointmentsController::class, 'getApprovedAppointments']);
-    Route::post('/admin/appointments/{id}/payment-link', [AppointmentsController::class, 'addPaymentLink']);
+    Route::get('/admin/appointments/all', [AppointmentsController::class, 'getAllAppointments']);
+    // Admin notifications for appointment
+    Route::get('/admin/appointments/{appointment_id}/notifications',[AppointmentsController::class, 'getNotificationsByAppointment']);
+    //change status after sending whatsapp notification
+    Route::put('/admin/notifications/{id}/send',[AppointmentsController::class, 'SendMassageManually']);
 });
 
 // Get lawyer's zoom meeting link for view in lawyer appointment
 Route::middleware('auth:sanctum')->get(
-    '/lawyer/appointments/{appointment_id}/meeting-links',
+    '/meeting/{appointment_id}/meeting-links',
     [LawyerProfileController::class, 'getZoomLink']
 );
 
@@ -250,5 +256,35 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 });
 
-// Stripe webhook (no authentication needed)
-Route::post('/webhooks/stripe', [StripePaymentController::class, 'webhook']);
+Route::middleware(['auth:sanctum'])->prefix('admin')->group(function () {
+    Route::get('/payments', [StripePaymentController::class, 'getAllPayments']);
+});
+
+
+//Delete Lawyer Account
+Route::delete('/lawyer/delete-account', [LawyerProfileController::class, 'deleteLawyerAccount'])
+    ->middleware('auth:sanctum');
+
+
+
+Route::middleware(['auth:sanctum', 'admin'])->group(function () {
+
+    // Admin notifications for appointment approvals
+    Route::get('/admin/notifications', [AppointmentController::class, 'getAdminNotifications']);
+
+    // Total appointments count
+    Route::get('/admin/appointments/total-count', [AnalyticsController::class, 'getTotalAppointmentsCount']);
+
+    // Normal users count
+    Route::get('/admin/users/count', [AnalyticsController::class, 'countNormalUsers']);
+
+    // Lawyers count
+    Route::get('/admin/lawyers/count', [AnalyticsController::class, 'countLawyers']);
+
+    // Today's appointments count
+    Route::get('/admin/appointments/today/count', [AnalyticsController::class, 'countTodayAppointments']);
+
+});
+
+//User Appointments
+Route::middleware('auth:sanctum')->get('/user/appointments', [AppointmentController::class, 'getUserAppointments']);

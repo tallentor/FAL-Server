@@ -20,5 +20,7 @@ class AppointmentNotification extends Model
         'time',
         'zoom_link',
         'status',
+        'user_phone_number',
+        'host_zoom_link',
     ];
 }

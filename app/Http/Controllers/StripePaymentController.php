@@ -4,14 +4,16 @@ namespace App\Http\Controllers;
 
 use Exception;
 use Stripe\Stripe;
-use Stripe\Checkout\Session;
+use App\Models\Appointment;
 use Illuminate\Http\Request;
+use Stripe\Checkout\Session;
+use App\Models\LawyerProfile;
+use App\Models\StripePayment;
+use App\Mail\PaymentFailedMail;
+use App\Mail\PaymentSuccessMail;
+use App\Models\LawyersDeleteAccount;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
-use App\Models\StripePayment;
-use App\Models\Appointment;
-use App\Mail\PaymentSuccessMail;
-use App\Mail\PaymentFailedMail;
 use App\Mail\AdminPaymentNotificationMail;
 
 class StripePaymentController extends Controller
@@ -64,14 +66,14 @@ class StripePaymentController extends Controller
                 'cancel_url'  => env('FRONTEND_URL') . '/payment-cancel',
             ]);
 
-            // Store session ID in stripe_payment_intent_id 
+            // Store session ID
             StripePayment::create([
                 'appointment_id' => $appointmentId,
                 'user_id' => Auth::id(),
                 'lawyer_id' => $appointment->lawyer_id,
                 'amount' => $request->amount,
                 'currency' => $request->currency ?? 'usd',
-                'stripe_payment_intent_id' => $session->id, // session id stored here
+                'stripe_payment_intent_id' => $session->id,
                 'status' => 'pending',
             ]);
 
@@ -87,6 +89,7 @@ class StripePaymentController extends Controller
 
     /**
      * Confirm Payment After Redirect
+     * (Webhook removed)
      */
     public function confirmPayment(Request $request)
     {
@@ -97,13 +100,37 @@ class StripePaymentController extends Controller
 
             $session = Session::retrieve($request->session_id);
 
+            // ============================
+            // PAYMENT FAILED
+            // ============================
             if ($session->payment_status !== 'paid') {
+
+                $payment = StripePayment::where('stripe_payment_intent_id', $session->id)->first();
+
+                if ($payment) {
+
+                    // Update DB
+                    $payment->update(['status' => 'failed']);
+                    $payment->appointment->update(['payment_status' => 'failed']);
+
+                    // Notify User
+                    Mail::to($payment->appointment->user->email)
+                        ->send(new PaymentFailedMail($payment));
+
+                    // Notify Admin
+                    Mail::to(config('services.admin.email'))
+                        ->send(new AdminPaymentNotificationMail($payment));
+                }
+
                 return response()->json([
                     'message' => 'Payment not completed',
                     'status' => $session->payment_status
                 ], 422);
             }
 
+            // ============================
+            // PAYMENT SUCCESS
+            // ============================
             $payment = StripePayment::where('stripe_payment_intent_id', $session->id)->firstOrFail();
 
             if ($payment->status !== 'succeeded') {
@@ -114,6 +141,14 @@ class StripePaymentController extends Controller
                 ]);
 
                 $payment->appointment->update(['payment_status' => 'confirmed']);
+
+                // Email User
+                Mail::to($payment->appointment->user->email)
+                    ->send(new PaymentSuccessMail($payment));
+
+                // Email Admin
+                Mail::to(config('services.admin.email'))
+                    ->send(new AdminPaymentNotificationMail($payment));
             }
 
             return response()->json([
@@ -124,7 +159,7 @@ class StripePaymentController extends Controller
         } catch (Exception $e) {
             return response()->json([
                 'message' => 'Error confirming payment',
-                'error' => $e->getMessage(),
+                'error'   => $e->getMessage(),
             ], 500);
         }
     }
@@ -168,7 +203,7 @@ class StripePaymentController extends Controller
     }
 
     /**
-     * User Payments
+     * User Payments List
      */
     public function getUserPayments()
     {
@@ -181,7 +216,7 @@ class StripePaymentController extends Controller
     }
 
     /**
-     * Lawyer Payments
+     * Lawyer Payments List
      */
     public function getLawyerPayments()
     {
@@ -197,83 +232,21 @@ class StripePaymentController extends Controller
         ]);
     }
 
-    /**
-     * Webhook Listener
-     */
-    public function webhook(Request $request)
-    {
-        $endpoint_secret = config('services.stripe.webhook_secret');
 
-        try {
-            $event = \Stripe\Webhook::constructEvent(
-                $request->getContent(),
-                $request->header('Stripe-Signature'),
-                $endpoint_secret
-            );
-
-            switch ($event->type) {
-
-                case 'checkout.session.completed':
-                    $this->handleCheckoutSuccess($event->data->object);
-                    break;
-
-                case 'checkout.session.async_payment_failed':
-                case 'payment_intent.payment_failed':
-                    $this->handleCheckoutFailed($event->data->object);
-                    break;
-            }
-
-            return response()->json(['received' => true]);
-
-        } catch (Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 400);
-        }
+    //Get all payments by admin
+    public function getAllPayments()
+{
+    // only admin can access
+    if (Auth::user()->role !== 2) {
+        return response()->json(['message' => 'Access denied'], 403);
     }
 
-    /**
-     * SUCCESS Handler
-     */
-    private function handleCheckoutSuccess($session)
-    {
-        $payment = StripePayment::where('stripe_payment_intent_id', $session->id)->first();
+    $payments = StripePayment::with(['user', 'lawyer', 'appointment'])
+        ->orderBy('created_at', 'desc')
+        ->get();
 
-        if ($payment && $payment->status !== 'succeeded') {
+    return response()->json(['payments' => $payments]);
+}
 
-            $payment->update([
-                'status' => 'succeeded',
-                'paid_at' => now(),
-            ]);
 
-            $payment->appointment->update(['payment_status' => 'confirmed']);
-
-            // Notify User
-            Mail::to($payment->appointment->user->email)
-                ->send(new PaymentSuccessMail($payment));
-
-            // Notify Admin
-            Mail::to(config('services.admin.email'))
-                ->send(new AdminPaymentNotificationMail($payment));
-        }
-    }
-
-    /**
-     * FAILED Handler
-     */
-    private function handleCheckoutFailed($session)
-    {
-        $payment = StripePayment::where('stripe_payment_intent_id', $session->id)->first();
-
-        if ($payment) {
-            $payment->update(['status' => 'failed']);
-            $payment->appointment->update(['payment_status' => 'failed']);
-
-            // Notify User
-            Mail::to($payment->appointment->user->email)
-                ->send(new PaymentFailedMail($payment));
-
-            // Notify Admin
-            Mail::to(config('services.admin.email'))
-                ->send(new AdminPaymentNotificationMail($payment));
-        }
-    }
 }
