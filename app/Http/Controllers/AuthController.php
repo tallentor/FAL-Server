@@ -166,50 +166,6 @@ class AuthController extends Controller
 }
 
 
- public function loginTest(Request $request)
-{
-    $request->validate([
-        'email' => 'required|email',
-        'password' => 'required'
-    ]);
-
-    $user = User::where('email', $request->email)->first();
-
-    if (!$user || !Hash::check($request->password, $user->password)) {
-        return response()->json([
-            'message' => 'The provided credentials are incorrect.'
-        ], 401);
-    }
-
-    // Check if email is verified
-    if (!$user->hasVerifiedEmail()) {
-        $user->sendEmailVerificationNotification();
-
-        return response()->json([
-            'message' => 'Your email address is not verified. A new verification link has been sent to your email.'
-        ], 403);
-    }
-
-    // Update last activity and mark as active if the user is a lawyer
-    if ($user->role == 1) {
-        $user->last_activity = now();
-        $user->is_active = true;
-        $user->save();
-
-        // Optional: broadcast event for real-time frontend updates
-        event(new \App\Events\LawyerStatusUpdated($user->id, 'active'));
-    }
-
-    // Create Sanctum token
-    $token = $user->createToken($user->name)->plainTextToken;
-
-    return response()->json([
-        'message' => 'Login successful.',
-        'user' => $user,
-        'token' => $token
-    ], 200);
-}
-
 
 
     public function logoutExist(Request $request)
@@ -272,6 +228,60 @@ class AuthController extends Controller
     ]);
 }
 
+
+
+public function registerUser(Request $request)
+{
+    $fields = $request->validate([
+        'name' => 'required',
+        'email' => 'required|email|unique:users|unique:pending_users',
+        'phone_number' => ['required', 'string', 'max:20', 'unique:users,phone_number', 'unique:pending_users,phone_number','regex:/^(0\d{9})$/'],
+        'password' => 'required|confirmed',
+    ]);
+
+    // Auto assign role
+    $fields['role'] = 0;
+    $fields['password'] = Hash::make($fields['password']);
+
+    $user = User::create($fields);
+
+    // Send verification email
+    $user->sendEmailVerificationNotification();
+
+    // Token
+    $token = $user->createToken($user->name)->plainTextToken;
+
+    return response()->json([
+        'message' => 'User registered successfully. Verification email sent.',
+        'user' => $user,
+        'token' => $token
+    ], 201);
+}
+
+
+
+
+
+public function registerLawyer(Request $request)
+{
+    $fields = $request->validate([
+        'name' => 'required',
+        'email' => 'required|email|unique:users|unique:pending_users',
+        'phone_number' => ['required', 'string', 'max:20', 'unique:users,phone_number', 'unique:pending_users,phone_number','regex:/^(0\d{9})$/'],
+        'password' => 'required|confirmed',
+    ]);
+
+    // Auto assign role
+    $fields['role'] = 1;
+
+    $fields['password'] = Hash::make($fields['password']);
+
+    PendingUser::create($fields);
+
+    return response()->json([
+        'message' => 'Your lawyer registration request was submitted. Please wait for admin approval.'
+    ], 202);
+}
 
     /**
      * Move user from users table to hold_users table
@@ -338,7 +348,4 @@ class AuthController extends Controller
             'hold_users' => HoldUser::all()
         ]);
     }
-
-
-
 }

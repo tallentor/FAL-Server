@@ -3,11 +3,12 @@
 namespace App\Http\Controllers;
 
 use Carbon\Carbon;
-use Illuminate\Http\Request;
-use App\Models\LawyerProfile;
-
 use App\Models\User;
+use Illuminate\Http\Request;
+
+use App\Models\LawyerProfile;
 use App\Models\AppointmentMeeting;
+use App\Models\LawyersDeleteAccount;
 use Illuminate\Support\Facades\Auth;
 
 class LawyerProfileController extends Controller
@@ -484,5 +485,54 @@ public function getZoomLink(Request $request, $appointment_id)
             'host_link' => $meeting->host_link,
         ]);
     }
+
+
+    //Lawyer's account delete request
+    public function deleteLawyerAccount(Request $request)
+{
+    $user = Auth::user();
+
+    if (!$user) {
+        return response()->json(['message' => 'Unauthenticated'], 401);
+    }
+
+    // Validate delete reason
+    $request->validate([
+        'reason' => 'required|string|min:3'
+    ]);
+
+    // Only lawyers can delete their account (role = 1)
+    if ($user->role != 1) {
+        return response()->json(['message' => 'Only lawyers can delete their account'], 403);
+    }
+
+    // Lawyer profile
+    $profile = LawyerProfile::where('user_id', $user->id)->first();
+
+    // Store delete details BEFORE deleting user
+    LawyersDeleteAccount::create([
+        'user_id' => $user->id,
+        'name' => $user->name,
+        'email' => $user->email,
+        'phone' => $user->phone ?? null,
+        'reason' => $request->reason,
+    ]);
+
+    // Delete lawyer profile
+    if ($profile) {
+        $profile->delete();
+    }
+
+    // Delete user account
+    $user->delete();
+
+    // Logout from Sanctum
+    $request->user()->currentAccessToken()->delete();
+
+    return response()->json([
+        'success' => true,
+        'message' => 'Lawyer account deleted successfully'
+    ], 200);
+}
 
 }

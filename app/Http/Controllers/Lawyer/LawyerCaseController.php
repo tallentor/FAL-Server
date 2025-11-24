@@ -420,47 +420,6 @@ private function sendWhatsAppMessage(array $data)
 }
 
 
-
-
-
-
-
-
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 //Reject Case with custom notification storage
 public function rejectCase($caseId)
 {
@@ -504,9 +463,6 @@ public function rejectCase($caseId)
 
     return response()->json(['message' => 'Case rejected successfully']);
 }
-
-
-
 
 
 
