@@ -204,6 +204,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/appointments', [AppointmentController::class, 'storeAppointment']);
     Route::get('/appointments/lawyer', [AppointmentController::class, 'getMyAppointments']);
     Route::put('/appointments/{id}/approve', [AppointmentController::class, 'approveAppointment']);
+    Route::get('/appointments/count/{user}', [AppointmentController::class, 'getSumAppointmnets']);
+    Route::get('/appointments/count/today/{user}', [AppointmentController::class, 'getfilterbyToday']);
+    Route::get('/appointments/approved/{user}', [AppointmentController::class, 'getApprovedAppointments']);
+    Route::get('/appointments/pending/{user}', [AppointmentController::class, 'getPendingAppointments']);
 });
 
 //Route::middleware(['auth:sanctum', 'admin'])->get('/admin/appointments/approved', [AppointmentsController::class, 'getApprovedAppointments']);
@@ -258,6 +262,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
 Route::middleware(['auth:sanctum'])->prefix('admin')->group(function () {
     Route::get('/payments', [StripePaymentController::class, 'getAllPayments']);
+    Route::get('/payments/amount/{user}', [StripePaymentController::class, 'getLawyerEarnings']);
 });
 
 

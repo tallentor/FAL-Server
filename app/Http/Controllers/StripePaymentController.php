@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\User;
 use Exception;
 use Stripe\Stripe;
 use App\Models\Appointment;
@@ -247,6 +248,15 @@ class StripePaymentController extends Controller
 
     return response()->json(['payments' => $payments]);
 }
+
+public function getLawyerEarnings(User $user)
+{
+    return (float) StripePayment::where([
+        'lawyer_id' => $user->id,
+        'status'    => 'succeeded'
+    ])->sum('amount');
+}
+
 
 
 }
