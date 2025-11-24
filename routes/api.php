@@ -35,7 +35,7 @@ Route::post('/register',[AuthController::class,'register']);
 //Route::post('/register/lawyer', [AuthController::class, 'registerLawyer']);
 Route::post('/login',[AuthController::class,'login'])->name('login')->middleware('last_activity');
 Route::post('/logout',[AuthController::class,'logout'])->middleware('auth:sanctum');
-Route::get('/users',[AuthController::class,'getAllUsers'])->middleware('auth:sanctum');
+Route::get('/users',[AuthController::class,'getAllUsers']);
 Route::delete('/users/{user}',[AuthController::class,'deleteUser'])->middleware('auth:sanctum');
 
 Route::middleware('auth:sanctum')->group(function () {
@@ -206,7 +206,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/appointments/{id}/approve', [AppointmentController::class, 'approveAppointment']);
 });
 
-
 //Route::middleware(['auth:sanctum', 'admin'])->get('/admin/appointments/approved', [AppointmentsController::class, 'getApprovedAppointments']);
 
 Route::middleware(['auth:sanctum', 'admin'])->group(function () {
@@ -256,6 +255,7 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 });
 
+
 Route::middleware(['auth:sanctum'])->prefix('admin')->group(function () {
     Route::get('/payments', [StripePaymentController::class, 'getAllPayments']);
 });
@@ -288,3 +288,9 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
 
 //User Appointments
 Route::middleware('auth:sanctum')->get('/user/appointments', [AppointmentController::class, 'getUserAppointments']);
+
+// Admin routes for hold management
+
+Route::post('/users/{userId}/hold', [AuthController::class, 'putUserOnHold']);
+Route::post('/hold-users/{holdUserId}/restore', [AuthController::class, 'restoreUserFromHold']);
+Route::get('/hold-users', [AuthController::class, 'getHoldUsers']);

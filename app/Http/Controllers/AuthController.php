@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Carbon\Carbon;
 use App\Models\User;
 use App\Models\PendingUser;
+use App\Models\HoldUser;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use App\Events\LawyerStatusUpdated;
@@ -190,7 +191,15 @@ class AuthController extends Controller
 
     // using sanctum tokens:
     if ($request->user()) {
-        $request->user()->currentAccessToken()?->delete(); // or tokens()->delete() depending on implementation
+        $token = $request->user()->currentAccessToken();
+        if ($token && method_exists($token, 'delete')) {
+            $token->delete();
+        } else {
+            // Fallback: delete all tokens if single token deletion is not available
+            if (method_exists($request->user(), 'tokens')) {
+                $request->user()->tokens()->delete();
+            }
+        }
     }
 
     return response()->json(['message' => 'Logged out']);
@@ -206,7 +215,8 @@ class AuthController extends Controller
     }
 
     public function getAllUsers(){
-        return User::where('role' , 0)->get();
+        // return User::where('role' , 0)->get();
+        return User::all();
     }
 
     public function deleteUser(User $user)
@@ -217,10 +227,6 @@ class AuthController extends Controller
         'message' => 'User deleted successfully'
     ]);
 }
-
-
-
-
 
 
 
@@ -277,4 +283,69 @@ public function registerLawyer(Request $request)
     ], 202);
 }
 
+    /**
+     * Move user from users table to hold_users table
+     */
+    public function putUserOnHold($userId, Request $request)
+    {
+        $user = User::findOrFail($userId);
+
+        // Create record in hold_users table
+        $holdUser = HoldUser::create([
+            'name' => $user->name,
+            'email' => $user->email,
+            'phone_number' => $user->phone_number,
+            'role' => $user->role,
+            'password' => $user->password,
+            'email_verified_at' => $user->email_verified_at,
+            'hold_reason' => $request->input('reason', null)
+        ]);
+
+        // Delete user's tokens
+        $user->tokens()->delete();
+
+        // Remove from users table
+        $user->delete();
+
+        return response()->json([
+            'message' => 'User has been put on hold successfully.',
+            'hold_user' => $holdUser
+        ], 200);
+    }
+
+    /**
+     * Restore user from hold_users table to users table
+     */
+    public function restoreUserFromHold($holdUserId)
+    {
+        $holdUser = HoldUser::findOrFail($holdUserId);
+
+        // Move back to users table
+        $user = User::create([
+            'name' => $holdUser->name,
+            'email' => $holdUser->email,
+            'phone_number' => $holdUser->phone_number,
+            'role' => $holdUser->role,
+            'password' => $holdUser->password,
+            'email_verified_at' => $holdUser->email_verified_at,
+        ]);
+
+        // Remove from hold_users table
+        $holdUser->delete();
+
+        return response()->json([
+            'message' => 'User has been restored successfully.',
+            'user' => $user
+        ], 200);
+    }
+
+    /**
+     * Get all users on hold
+     */
+    public function getHoldUsers()
+    {
+        return response()->json([
+            'hold_users' => HoldUser::all()
+        ]);
+    }
 }
