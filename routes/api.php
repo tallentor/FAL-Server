@@ -26,13 +26,19 @@ use App\Http\Controllers\Lawyer\ActiveLawyerController;
 use Illuminate\Foundation\Auth\EmailVerificationRequest;
 use App\Http\Controllers\Admin\CasesNotificationController;
 
+// Route::get('/user', function (Request $request) {
+//     return $request->user();
+// })->middleware(['auth:sanctum', 'verified']);
 Route::get('/user', function (Request $request) {
-    return $request->user();
+    $user = $request->user();
+
+    return response()->json([
+        'user' => $user,
+        'email_verified' => $user->hasVerifiedEmail() // true or false
+    ]);
 })->middleware(['auth:sanctum', 'verified']);
 
 Route::post('/register',[AuthController::class,'register']);
-//Route::post('/register/user', [AuthController::class, 'registerUser']);
-//Route::post('/register/lawyer', [AuthController::class, 'registerLawyer']);
 Route::post('/login',[AuthController::class,'login'])->name('login')->middleware('last_activity');
 Route::post('/logout',[AuthController::class,'logout'])->middleware('auth:sanctum');
 Route::get('/users',[AuthController::class,'getAllUsers']);
@@ -97,7 +103,7 @@ Route::post('/chat/send', [ChatController::class, 'sendMessage']);
 
 Route::get('/lawyer_profiles',[LawyerProfileController::class , 'index']);
 Route::post('/lawyer_profiles',[LawyerProfileController::class , 'store']);
-
+Route::put('/lawyer-profile/{id}', [LawyerProfileController::class, 'update']);
 Route::get('/lawyer/{user}',[LawyerProfileController::class , 'getLawyerByUser']);
 
 
@@ -288,6 +294,25 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
 
 //User Appointments
 Route::middleware('auth:sanctum')->get('/user/appointments', [AppointmentController::class, 'getUserAppointments']);
+
+
+
+Route::middleware(['auth:sanctum', 'admin'])->group(function () {
+
+    // Get all pending profiles
+    Route::get('/admin/lawyer-profiles/pending',
+        [LawyerProfileController::class, 'getPendingProfiles']);
+
+    // Get a specific profile by ID
+    Route::get('/admin/lawyer-profile/{id}',
+        [LawyerProfileController::class, 'viewProfile']);
+
+    //Approve lawyer profile by admin
+    Route::post('/admin/lawyer-profiles/{id}/approve', [LawyerProfileController::class, 'approveLawyerProfile']);
+
+    //Reject lawyer profile by admin
+    Route::post('/admin/lawyer-profiles/{id}/reject', [LawyerProfileController::class, 'rejectLawyerProfile']);
+});
 
 // Admin routes for hold management
 

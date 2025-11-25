@@ -13,120 +13,59 @@ use Illuminate\Support\Facades\Auth;
 
 class LawyerProfileController extends Controller
 {
-    public function index1(Request $request)
+
+public function index1()
 {
-    $query = LawyerProfile::query();
+    $threshold = Carbon::now()->subMinutes(5); // consider active if last 5 mins
 
-    // Filter by minimum total cases
-    if ($request->has('min_cases')) {
-        $query->where('total_cases', '>=', $request->min_cases);
-    }
+    // Get all lawyers with user info
+    $lawyers = LawyerProfile::with(['user:id,name,email,last_activity'])->get();
 
-    // Filter by maximum total cases
-    if ($request->has('max_cases')) {
-        $query->where('total_cases', '<=', $request->max_cases);
-    }
+    // Transform data
+    $data = $lawyers->transform(function ($lawyer) use ($threshold) {
+        $isActive = optional($lawyer->user)->last_activity
+            ? Carbon::parse($lawyer->user->last_activity)->gte($threshold)
+            : false;
 
-    // Filter by minimum rating
-    if ($request->has('min_rating')) {
-        $query->where('rating', '>=', $request->min_rating);
-    }
+        return [
+            'id' => $lawyer->id,
+            'user_id' => $lawyer->user_id,
+            'lawyer_name' => $lawyer->lawyer_name ?? $lawyer->user->name ?? null,
+            'cover_image' => $lawyer->cover_image,
+            'profile_image' => $lawyer->profile_image,
+            'amount' => $lawyer->amount,
+            'description' => $lawyer->description,
+            'education' => $lawyer->education,
+            'specialty' => $lawyer->specialty,
+            'experience' => $lawyer->experience,
+            'verified' => $lawyer->verified,
+            'languages' => $lawyer->languages,
+            'total_cases' => $lawyer->total_cases,
+            'rating' => $lawyer->rating,
+            'created_at' => $lawyer->created_at,
+            'updated_at' => $lawyer->updated_at,
+            'user_email' => $lawyer->user->email ?? null,
+            'last_activity' => $lawyer->user->last_activity ?? null,
+            'is_active' => $isActive,
+        ];
+    });
 
-    // Filter by maximum rating
-    if ($request->has('max_rating')) {
-        $query->where('rating', '<=', $request->max_rating);
-    }
-
-    // Filter by verified status
-    if ($request->has('verified')) {
-        $verified = filter_var($request->verified, FILTER_VALIDATE_BOOLEAN);
-        $query->where('verified', $verified);
-    }
-
-    // Sorting
-    if ($request->has('sort_by')) {
-        $sortField = $request->get('sort_by');
-        $sortOrder = $request->get('sort_order', 'desc');
-
-        if (in_array($sortField, ['total_cases', 'rating'])) {
-            $query->orderBy($sortField, $sortOrder);
-        }
-    }
-
-    // pagination
-    if ($request->has('paginate')) {
-        $perPage = $request->get('paginate', 10);
-        $lawyers = $query->paginate($perPage);
-    } else {
-        $lawyers = $query->get();
-    }
-
-    return response()->json($lawyers);
+    // Return response
+    return response()->json([
+        'success' => true,
+        'lawyers' => $data,
+    ]);
 }
-
-
-    public function index2(Request $request)
-{
-    $query = LawyerProfile::with('user:id,name');
-
-    // Filter by minimum total cases
-    if ($request->has('min_cases')) {
-        $query->where('total_cases', '>=', $request->min_cases);
-    }
-
-    // Filter by maximum total cases
-    if ($request->has('max_cases')) {
-        $query->where('total_cases', '<=', $request->max_cases);
-    }
-
-    // Filter by minimum rating
-    if ($request->has('min_rating')) {
-        $query->where('rating', '>=', $request->min_rating);
-    }
-
-    // Filter by maximum rating
-    if ($request->has('max_rating')) {
-        $query->where('rating', '<=', $request->max_rating);
-    }
-
-    // Filter by verified status
-    if ($request->has('verified')) {
-        $verified = filter_var($request->verified, FILTER_VALIDATE_BOOLEAN);
-        $query->where('verified', $verified);
-    }
-
-    // Sorting
-    if ($request->has('sort_by')) {
-        $sortField = $request->get('sort_by');
-        $sortOrder = $request->get('sort_order', 'desc');
-
-        if (in_array($sortField, ['total_cases', 'rating'])) {
-            $query->orderBy($sortField, $sortOrder);
-        }
-    }
-
-    // Pagination or normal get
-    if ($request->has('paginate')) {
-        $perPage = $request->get('paginate', 10);
-        $lawyers = $query->paginate($perPage);
-        $lawyers->getCollection()->transform(fn($lawyer) => $this->formatLawyer($lawyer));
-    } else {
-        $lawyers = $query->get()->map(fn($lawyer) => $this->formatLawyer($lawyer));
-    }
-
-    return response()->json($lawyers);
-}
-
-
-
 
 
 public function index()
 {
     $threshold = Carbon::now()->subMinutes(5); // consider active if last 5 mins
 
-    // Get all lawyers with user info
-    $lawyers = LawyerProfile::with(['user:id,name,email,last_activity'])->get();
+    // Get only approved lawyers with user info
+    $lawyers = LawyerProfile::with(['user:id,name,email,last_activity'])
+        ->where('status', 'approved')
+        ->get();
 
     // Transform data
     $data = $lawyers->transform(function ($lawyer) use ($threshold) {
@@ -286,35 +225,8 @@ private function formatLawyer($lawyer)
 
 
 
-    public function store1(Request $request)
-    {
-        // Validate input
-        $validated = $request->validate([
-            'user_id' => 'required|exists:users,id',
-            'cover_image' => 'required|file|image|max:2048',
-            'profile_image' => 'required|file|image|max:2048',
-            'amount' => 'required|numeric|decimal:0,2',
-            'description' => 'required|string',
-            'education' => 'required|string',
-            'specialty' => 'required|string',
-            'experience' => 'required|string',
-            'verified' => 'boolean',
-            'languages' => 'string',
-        ]);
 
-        // Store images in public/images/Lawyer folder
-        $coverImagePath = $request->file('cover_image')->store('images/Lawyer', 'public');
-        $profileImagePath = $request->file('profile_image')->store('images/Lawyer', 'public');
-
-        $validated['cover_image'] = $coverImagePath;
-        $validated['profile_image'] = $profileImagePath;
-
-        $profile = LawyerProfile::create($validated);
-        return response()->json($profile, 201);
-    }
-
-
-    public function store(Request $request)
+    public function storeWada(Request $request)
 {
     // Validate input
     $validated = $request->validate([
@@ -374,12 +286,138 @@ private function formatLawyer($lawyer)
 }
 
 
+
+public function store(Request $request)
+{
+    // Validate input
+    $validated = $request->validate([
+        'user_id' => 'required|exists:users,id',
+        'cover_image' => 'nullable|file|image|max:2048',
+        'profile_image' => 'nullable|file|image|max:2048',
+        'amount' => 'nullable|numeric|decimal:0,2',
+        'description' => 'nullable|string',
+        'education' => 'nullable|string',
+        'specialty' => 'nullable|string',
+        'experience' => 'nullable|string',
+        'verified' => 'nullable|boolean',
+        'languages' => 'nullable|string',
+
+        // New fields
+        'id_or_passport' => 'nullable|string|max:255',
+        'proof_of_authorisation' => 'nullable|file|mimes:jpg,jpeg,png,pdf,doc,docx|max:4096',
+        'bar_association_id' => 'nullable|string|max:255',
+        'cv' => 'nullable|file|mimes:pdf,doc,docx|max:4096',
+        'signed_agreement' => 'nullable|file|mimes:pdf,jpg,jpeg,png,doc,docx|max:4096',
+        'areas_of_practice' => 'nullable|string',
+    ]);
+
+    // ❗ CHECK FOR DUPLICATE PROFILE
+    $existing = LawyerProfile::where('user_id', $validated['user_id'])->first();
+
+    if ($existing) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Profile already exists for this lawyer.',
+            'existing_profile_id' => $existing->id
+        ], 409); // 409 = Conflict
+    }
+
+    // Store files
+    if ($request->hasFile('cover_image')) {
+        $validated['cover_image'] = $request->file('cover_image')->store('images/Lawyer', 'public');
+    }
+
+    if ($request->hasFile('profile_image')) {
+        $validated['profile_image'] = $request->file('profile_image')->store('images/Lawyer', 'public');
+    }
+
+    if ($request->hasFile('proof_of_authorisation')) {
+        $validated['proof_of_authorisation'] = $request->file('proof_of_authorisation')->store('images/Lawyer', 'public');
+    }
+
+    if ($request->hasFile('cv')) {
+        $validated['cv'] = $request->file('cv')->store('images/Lawyer', 'public');
+    }
+
+    if ($request->hasFile('signed_agreement')) {
+        $validated['signed_agreement'] = $request->file('signed_agreement')->store('images/Lawyer', 'public');
+    }
+
+    // Create the lawyer profile
+    $profile = LawyerProfile::create($validated);
+
+    return response()->json([
+        'success' => true,
+        'message' => 'Lawyer profile created successfully',
+        'data' => $profile,
+    ], 201);
+}
+
+
+public function update(Request $request, $id)
+{
+    // Find the existing lawyer profile
+    $profile = LawyerProfile::findOrFail($id);
+
+    // Validate input
+    $validated = $request->validate([
+        'cover_image' => 'nullable|file|image|max:2048',
+        'profile_image' => 'nullable|file|image|max:2048',
+        'amount' => 'nullable|numeric|decimal:0,2',
+        'description' => 'nullable|string',
+        'education' => 'nullable|string',
+        'specialty' => 'nullable|string',
+        'experience' => 'nullable|string',
+        'verified' => 'nullable|boolean',
+        'languages' => 'nullable|string',
+
+        // New fields
+        'id_or_passport' => 'nullable|string|max:255',
+        'proof_of_authorisation' => 'nullable|file|mimes:jpg,jpeg,png,pdf,doc,docx|max:4096',
+        'bar_association_id' => 'nullable|string|max:255',
+        'cv' => 'nullable|file|mimes:pdf,doc,docx|max:4096',
+        'signed_agreement' => 'nullable|file|mimes:pdf,jpg,jpeg,png,doc,docx|max:4096',
+        'areas_of_practice' => 'nullable|string',
+    ]);
+
+    // Upload files (same as store)
+    if ($request->hasFile('cover_image')) {
+        $validated['cover_image'] = $request->file('cover_image')->store('images/Lawyer', 'public');
+    }
+
+    if ($request->hasFile('profile_image')) {
+        $validated['profile_image'] = $request->file('profile_image')->store('images/Lawyer', 'public');
+    }
+
+    if ($request->hasFile('proof_of_authorisation')) {
+        $validated['proof_of_authorisation'] = $request->file('proof_of_authorisation')->store('images/Lawyer', 'public');
+    }
+
+    if ($request->hasFile('cv')) {
+        $validated['cv'] = $request->file('cv')->store('images/Lawyer', 'public');
+    }
+
+    if ($request->hasFile('signed_agreement')) {
+        $validated['signed_agreement'] = $request->file('signed_agreement')->store('images/Lawyer', 'public');
+    }
+
+    // Update profile
+    $profile->update($validated);
+
+    return response()->json([
+        'message' => 'Lawyer profile updated successfully',
+        'data' => $profile,
+    ]);
+}
+
+
+
     public function show(LawyerProfile $lawyerProfile)
     {
         return $lawyerProfile;
     }
 
-    public function update(Request $request, LawyerProfile $lawyerProfile)
+    public function update2(Request $request, LawyerProfile $lawyerProfile)
     {
         // Validate input
         $validated = $request->validate([
@@ -534,5 +572,86 @@ public function getZoomLink(Request $request, $appointment_id)
         'message' => 'Lawyer account deleted successfully'
     ], 200);
 }
+
+
+// Get all the pending lawyer profiles for admin
+public function getPendingProfiles()
+{
+    // Fetch lawyer profiles with status 'pending'
+    $pendingProfiles = LawyerProfile::where('status', 'pending')
+        ->get();
+
+    return response()->json([
+        'success' => true,
+        'data' => $pendingProfiles
+    ]);
+}
+
+//View specific lawyer profile data by admin
+public function viewProfile($id)
+{
+    $profile = LawyerProfile::with('user')->find($id);
+
+    if (!$profile) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Lawyer profile not found'
+        ], 404);
+    }
+
+    return response()->json([
+        'success' => true,
+        'data' => $profile
+    ]);
+}
+
+
+//Approve lawyer profile by admin
+public function approveLawyerProfile($id)
+{
+    $profile = LawyerProfile::find($id);
+
+    if (!$profile) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Lawyer profile not found'
+        ], 404);
+    }
+
+    // Update status
+    $profile->status = 'approved';
+    $profile->save();
+
+    return response()->json([
+        'success' => true,
+        'message' => 'Lawyer profile approved successfully',
+        'data' => $profile
+    ]);
+}
+
+
+//Reject lawyer profile by admin
+public function rejectLawyerProfile($id)
+{
+    $profile = LawyerProfile::find($id);
+
+    if (!$profile) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Lawyer profile not found'
+        ], 404);
+    }
+
+    // Update status to rejected
+    $profile->status = 'rejected';
+    $profile->save();
+
+    return response()->json([
+        'success' => true,
+        'message' => 'Lawyer profile rejected successfully',
+        'data' => $profile
+    ]);
+}
+
 
 }

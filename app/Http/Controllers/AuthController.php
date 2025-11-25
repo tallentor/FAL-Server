@@ -15,48 +15,59 @@ use Illuminate\Support\Facades\Hash;
 
 class AuthController extends Controller
 {
-    public function register1(Request $request)
-    {
-        $fields = $request->validate([
-            'name' => 'required',
-            'email' => 'required|email|unique:users|unique:pending_users',
-            'phone_number' => ['required', 'string', 'max:20', 'unique:users,phone_number', 'unique:pending_users,phone_number'],
-            'role' => ['required', Rule::in([0, 1, 2])],
-            'password' => 'required|confirmed'
-        ]);
-
-        // If role == 1, send for approval
-        if ($fields['role'] == 1) {
-            $fields['password'] = Hash::make($fields['password']);
-
-            PendingUser::create($fields);
-
-            return response()->json([
-                'message' => 'Your registration request has been submitted for approval. Please wait for admin approval.'
-            ], 202);
-        }
-
-        // Otherwise, register immediately
-        $fields['password'] = Hash::make($fields['password']);
-        $user = User::create($fields);
-
-        $token = $user->createToken($request->name);
-
-        return [
-            'user' => $user,
-            'token' => $token->plainTextToken
-        ];
-    }
-
     public function register(Request $request)
+{
+    $fields = $request->validate([
+        'name' => 'required|string|max:255',
+        'email' => 'required|email|unique:users,email',
+        'phone_number' => [
+            'required',
+            'string',
+            'max:20',
+            'unique:users,phone_number',
+            'regex:/^(\+?[1-9]\d{9,14}|0\d{9})$/'
+        ],
+        'role' => ['required', Rule::in([0, 1, 2])], // 0=user, 1=lawyer, 2=admin
+        'password' => 'required|confirmed|min:6'
+    ]);
+
+    // Hash password
+    $fields['password'] = Hash::make($fields['password']);
+
+    // Create user
+    $user = User::create($fields);
+
+    // Send verification email for both user and lawyer
+    $user->sendEmailVerificationNotification();
+
+    // Create Sanctum token
+    $token = $user->createToken($request->name)->plainTextToken;
+
+    return response()->json([
+        'message' => 'Registration successful. A verification email has been sent to your email address.',
+        'user' => $user,
+        'token' => $token
+    ], 201);
+}
+
+
+    public function registerExis(Request $request)
 {
     $fields = $request->validate([
         'name' => 'required',
         'email' => 'required|email|unique:users|unique:pending_users',
-        'phone_number' => ['required', 'string', 'max:20', 'unique:users,phone_number', 'unique:pending_users,phone_number','regex:/^(0\d{9})$/'],
+        'phone_number' => [
+            'required',
+            'string',
+            'max:20',
+            'unique:users,phone_number',
+            'unique:pending_users,phone_number',
+            'regex:/^(\+?[1-9]\d{9,14}|0\d{9})$/'
+        ],
         'role' => ['required', Rule::in([0, 1, 2])],
         'password' => 'required|confirmed'
     ]);
+
 
     // If role == 1, send to PendingUser for approval
     if ($fields['role'] == 1) {

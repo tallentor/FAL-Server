@@ -2,16 +2,16 @@
 
 namespace App\Http\Controllers;
 
+use Log;
 use Exception;
 use Carbon\Carbon;
 use App\Models\User;
-use App\Models\Appointment;
 
+use App\Models\Appointment;
 use Illuminate\Http\Request;
 use App\Models\LawyerProfile;
 use App\Mail\CaseApprovedMail;
 use App\Models\AppointmentMeeting;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
@@ -23,82 +23,9 @@ class AppointmentController extends Controller
 {
 
     //Appointment Store
-    public function storeAppointment1(Request $request)
-{
-    $request->validate([
-        'lawyer_id' => 'required|exists:users,id',
-        'appointment_date' => 'required|date|after_or_equal:today',
-        'appointment_time' => 'required|date_format:H:i',
-        'full_name' => 'required|string|max:255',
-        'case_title' => 'required|string|max:255',
-        'case_description' => 'required|string',
-        'type_of_visa' => 'nullable|string|max:255',
-        'country_of_destination' => 'nullable|string|max:255',
-        'current_visa_status' => 'nullable|string|max:255',
-        'visa_expiry_date' => 'nullable|date',
-        'immigration_history' => 'nullable|string',
-        'reason_for_immigration' => 'nullable|string|max:255',
-        'previous_visa_denials' => 'nullable|string',
-        'number_of_dependents' => 'nullable|integer',
-        'additional_notes' => 'nullable|string',
-    ]);
-
-    // Check if this lawyer has a lawyer profile
-    $lawyerProfile = LawyerProfile::where('user_id', $request->lawyer_id)->first();
-
-    if (!$lawyerProfile) {
-        return response()->json([
-            'message' => 'Selected user is not a registered lawyer (no lawyer profile found).'
-        ], 422);
-    }
-
-    // Get consultation fee from lawyer's profile
-    $consultationFee = $lawyerProfile->amount;
-
-    if (!$consultationFee || $consultationFee <= 0) {
-        return response()->json([
-            'message' => 'This lawyer has not set their consultation fee yet.'
-        ], 422);
-    }
-
-    // Create the appointment
-    $appointment = Appointment::create([
-        'user_id' => Auth::id(),
-        'lawyer_id' => $request->lawyer_id,
-        'appointment_date' => $request->appointment_date,
-        'appointment_time' => $request->appointment_time,
-        'full_name' => $request->full_name,
-        'case_title' => $request->case_title,
-        'case_description' => $request->case_description,
-        'type_of_visa' => $request->type_of_visa,
-        'country_of_destination' => $request->country_of_destination,
-        'current_visa_status' => $request->current_visa_status,
-        'visa_expiry_date' => $request->visa_expiry_date,
-        'immigration_history' => $request->immigration_history,
-        'reason_for_immigration' => $request->reason_for_immigration,
-        'previous_visa_denials' => $request->previous_visa_denials,
-        'number_of_dependents' => $request->number_of_dependents,
-        'additional_notes' => $request->additional_notes,
-        'payment_status' => 'pending_payment', // Appointment pending until payment
-    ]);
-
-    // Load related lawyer + lawyer profile for response
-    $appointment->load(['lawyer', 'lawyerProfile']);
-
-    return response()->json([
-        'message' => 'Appointment created successfully. Please proceed with payment.',
-        'appointment' => $appointment,
-        'payment_required' => true,
-        'consultation_fee' => $consultationFee,
-        'lawyer_name' => $appointment->lawyer->name,
-        'currency' => 'usd', // or get from config/lawyer profile
-    ], 201);
-}
-
-
-public function storeAppointment(Request $request)
-{
-    $request->validate([
+    public function storeAppointmentWithoutSMS(Request $request)
+    {
+        $request->validate([
         'lawyer_id' => 'required|exists:users,id',
         'appointment_date' => 'required|date|after_or_equal:today',
         'appointment_time' => 'required|date_format:H:i',
@@ -169,6 +96,116 @@ public function storeAppointment(Request $request)
         'currency' => 'usd',
     ], 201);
 }
+
+
+
+public function storeAppointment(Request $request)
+{
+    $request->validate([
+        'lawyer_id' => 'required|exists:users,id',
+        'appointment_date' => 'required|date|after_or_equal:today',
+        'appointment_time' => 'required|date_format:H:i',
+        'full_name' => 'required|string|max:255',
+        'case_title' => 'required|string|max:255',
+        'case_description' => 'required|string',
+        'type_of_visa' => 'nullable|string|max:255',
+        'country_of_destination' => 'nullable|string|max:255',
+        'current_visa_status' => 'nullable|string|max:255',
+        'visa_expiry_date' => 'nullable|date',
+        'immigration_history' => 'nullable|string',
+        'reason_for_immigration' => 'nullable|string|max:255',
+        'previous_visa_denials' => 'nullable|string',
+        'number_of_dependents' => 'nullable|integer',
+        'additional_notes' => 'nullable|string',
+    ]);
+
+    // Check lawyer profile
+    $lawyerProfile = LawyerProfile::where('user_id', $request->lawyer_id)->first();
+
+    if (!$lawyerProfile) {
+        return response()->json([
+            'message' => 'Selected user is not a registered lawyer (no lawyer profile found).'
+        ], 422);
+    }
+
+    $consultationFee = $lawyerProfile->amount;
+
+    if (!$consultationFee || $consultationFee <= 0) {
+        return response()->json([
+            'message' => 'This lawyer has not set their consultation fee yet.'
+        ], 422);
+    }
+
+    // Create appointment
+    $appointment = Appointment::create([
+        'user_id' => Auth::id(),
+        'lawyer_id' => $request->lawyer_id,
+        'appointment_date' => $request->appointment_date,
+        'appointment_time' => $request->appointment_time,
+        'full_name' => $request->full_name,
+        'case_title' => $request->case_title,
+        'case_description' => $request->case_description,
+        'type_of_visa' => $request->type_of_visa,
+        'country_of_destination' => $request->country_of_destination,
+        'current_visa_status' => $request->current_visa_status,
+        'visa_expiry_date' => $request->visa_expiry_date,
+        'immigration_history' => $request->immigration_history,
+        'reason_for_immigration' => $request->reason_for_immigration,
+        'previous_visa_denials' => $request->previous_visa_denials,
+        'number_of_dependents' => $request->number_of_dependents,
+        'additional_notes' => $request->additional_notes,
+        'payment_status' => 'pending_payment',
+    ]);
+
+    $appointment->load(['lawyer', 'lawyerProfile']);
+
+    // ------------------------------
+    // ▶️ Send Email Notification
+    // ------------------------------
+    Mail::to($appointment->lawyer->email)
+        ->send(new LawyerAppointmentNotification($appointment));
+
+    // ------------------------------
+    // ▶️ Send SMS to Lawyer
+    // ------------------------------
+    try {
+        $smsService = new \App\Services\NotifyLkService();
+
+        // Format lawyer phone number to 94XXXXXXXXX
+        $phone = $appointment->lawyer->phone_number;
+
+        if ($phone && strlen($phone) == 10 && str_starts_with($phone, '0')) {
+            $phone = '94' . substr($phone, 1);
+        }
+
+        $smsMessage = "New Appointment Request:
+
+        Client: {$appointment->full_name}
+        Case: {$appointment->case_title}
+        Date: {$appointment->appointment_date}
+        Time: {$appointment->appointment_time}
+
+        Please login to review.";
+
+        $smsService->sendSms($phone, $smsMessage);
+
+    } catch (\Exception $e) {
+        \Log::error('SMS sending failed: ' . $e->getMessage());
+        // Do not interrupt appointment creation
+    }
+
+    // ------------------------------
+
+    return response()->json([
+        'message' => 'Appointment created successfully. Lawyer notified via email and SMS. Please proceed with payment.',
+        'appointment' => $appointment,
+        'payment_required' => true,
+        'consultation_fee' => $consultationFee,
+        'lawyer_name' => $appointment->lawyer->name,
+        'currency' => 'usd',
+    ], 201);
+}
+
 
 
     // Get all appointments for a specific lawyer.

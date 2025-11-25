@@ -34,6 +34,13 @@ class User extends Authenticatable implements MustVerifyEmail
         'password',
     ];
 
+    protected $appends = ['email_verified'];
+
+    public function getEmailVerifiedAttribute()
+    {
+        return $this->hasVerifiedEmail();
+    }
+
     /**
      * The attributes that should be hidden for serialization.
      *
