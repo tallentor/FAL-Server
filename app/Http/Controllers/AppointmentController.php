@@ -517,5 +517,35 @@ public function getUserAppointments()
     ]);
 }
 
+public function getSumAppointmnets(User $user){
+
+    return Appointment::where('lawyer_id', $user->id)->count();
+
+}
+
+public function getfilterbyToday(User $user){
+
+    return Appointment::where('lawyer_id', $user->id)
+        ->whereDate('appointment_date', Carbon::today())
+        ->count();
+}
+
+
+public function getApprovedAppointments(User $user)
+{
+    return Appointment::where('lawyer_id', $user->id)
+        ->where('status', 'approved')
+        ->get();
+}
+
+public function getPendingAppointments(User $user)
+{
+    return Appointment::where('lawyer_id', $user->id)
+        ->where('status', 'pending')
+        ->get();
+}
+
+
+
 
 }
