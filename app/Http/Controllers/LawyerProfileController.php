@@ -653,5 +653,11 @@ public function rejectLawyerProfile($id)
     ]);
 }
 
+public function getLawyerData(){
+
+    return LawyerProfile::with('user')->get();
+    
+}
+
 
 }

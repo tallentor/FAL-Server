@@ -105,6 +105,7 @@ Route::get('/lawyer_profiles',[LawyerProfileController::class , 'index']);
 Route::post('/lawyer_profiles',[LawyerProfileController::class , 'store']);
 Route::put('/lawyer-profile/{id}', [LawyerProfileController::class, 'update']);
 Route::get('/lawyer/{user}',[LawyerProfileController::class , 'getLawyerByUser']);
+Route::get('/lawyer/data/all',[LawyerProfileController::class , 'getLawyerData']);
 
 
 Route::apiResource('system_prompts', SystemPromptController::class);
