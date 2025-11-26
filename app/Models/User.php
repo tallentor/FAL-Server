@@ -2,8 +2,11 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
+
+use App\Mail\VerifyEmailCustom;
 use Laravel\Sanctum\HasApiTokens;
+use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -86,4 +89,20 @@ class User extends Authenticatable implements MustVerifyEmail
 {
     return $this->belongsToMany(CaseModel::class, 'assign_lawyers', 'lawyer_id', 'case_id');
 }
+
+    // verify email
+    public function sendEmailVerificationNotification()
+    {
+        $verificationUrl = URL::temporarySignedRoute(
+            'verification.verify',
+            now()->addMinutes(60),
+            [
+                'id' => $this->getKey(),
+                'hash' => sha1($this->email),
+            ]
+        );
+
+        Mail::to($this->email)->send(new VerifyEmailCustom($verificationUrl));
+    }
+
 }

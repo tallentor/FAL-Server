@@ -15,6 +15,7 @@ use App\Models\LawyersDeleteAccount;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\AdminPaymentNotificationMail;
+use App\Mail\LawyerAppointmentNotification;
 
 class StripePaymentController extends Controller
 {
@@ -139,7 +140,7 @@ class StripePaymentController extends Controller
                     'status'  => 'succeeded',
                     'paid_at' => now(),
                 ]);
-
+                $appointment = $payment->appointment;
                 $payment->appointment->update(['payment_status' => 'confirmed']);
 
                 // Email User
@@ -149,6 +150,10 @@ class StripePaymentController extends Controller
                 // Email Admin
                 Mail::to(config('services.admin.email'))
                     ->send(new AdminPaymentNotificationMail($payment));
+
+                // Email Lawyer
+                Mail::to($appointment->lawyer->email)
+                    ->send(new LawyerAppointmentNotification($appointment));
             }
 
             return response()->json([
@@ -218,18 +223,43 @@ class StripePaymentController extends Controller
     /**
      * Lawyer Payments List
      */
-    public function getLawyerPayments()
-    {
-        $payments = StripePayment::with(['appointment', 'user'])
-            ->where('lawyer_id', Auth::id())
-            ->where('status', 'succeeded')
-            ->orderBy('paid_at', 'desc')
-            ->get();
+    public function getLawyerPayments1()
+{
+    $payments = StripePayment::select([
+            'id',
+            'amount',
+            'currency',
+            'stripe_payment_intent_id',
+            'payment_method',
+            'status',
+            'paid_at',
+            'created_at'
+        ])
+        ->where('lawyer_id', Auth::id())
+        ->where('status', 'succeeded')
+        ->orderBy('paid_at', 'desc')
+        ->get();
 
-        return response()->json([
-            'payments' => $payments,
-            'total_earned' => $payments->sum('amount'),
-        ]);
+    return response()->json([
+        'payments' => $payments,
+        'total_earned' => $payments->sum('amount'),
+        'total_transactions' => $payments->count(),
+    ]);
+}
+
+
+public function getLawyerPayments() 
+{ 
+    $payments = StripePayment::with(['appointment', 'user']) 
+        ->where('lawyer_id', Auth::id()) 
+        ->where('status', 'succeeded') 
+        ->orderBy('paid_at', 'desc') ->get(); 
+        
+        return response()->json(
+        [ 'payments' => $payments, 
+           'total_earned' => $payments->sum('amount'), 
+        
+        ]); 
     }
 
 

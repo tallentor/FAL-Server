@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Your Case Has Been Approved</title>
+    <title>Verify Your Email Address</title>
 </head>
 
 <body
@@ -45,20 +45,20 @@
                                 </tr>
                             </table>
 
-                            <!-- SUCCESS ROW -->
+                            <!-- NOTIFICATION ROW -->
                             <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
                                 style="position: relative; z-index: 1;">
                                 <tr>
                                     <td style="text-align: center; padding: 5px 0 0;">
 
-                                        <!-- Approval Icon with Circle Background -->
+                                        <!-- Shield Check Icon with Circle Background -->
                                         <div
                                             style="display: inline-block; background: rgba(255,255,255,0.15); border-radius: 50%; padding: 10px; margin-bottom: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.2), 0 0 0 5px rgba(255,255,255,0.08);">
                                             <svg width="40" height="40" viewBox="0 0 24 24" fill="none"
-                                                stroke="white" stroke-width="2.5" stroke-linecap="round"
+                                                stroke="white" stroke-width="2" stroke-linecap="round"
                                                 stroke-linejoin="round" style="display: block;">
-                                                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                                                <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                                                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                                                <polyline points="9 12 11 14 15 10"></polyline>
                                             </svg>
                                         </div>
 
@@ -66,11 +66,11 @@
                                         <div>
                                             <h1
                                                 style="margin: 0; color: #ffffff; font-size: 26px; font-weight: 700; letter-spacing: -0.5px; text-shadow: 0 2px 4px rgba(0,0,0,0.2);">
-                                                Case Approved
+                                                Verify Your Email Address
                                             </h1>
                                             <p
                                                 style="margin: 5px 0 0; color: rgba(255,255,255,0.9); font-size: 13px; font-weight: 400;">
-                                                Your appointment has been confirmed
+                                                One more step to get started
                                             </p>
                                         </div>
 
@@ -86,88 +86,61 @@
                         <td style="padding: 40px;">
 
                             <p style="font-size: 16px; color: #2d3748; margin: 0 0 20px; line-height: 1.6;">
-                                Hello <strong>{{ $client->name }}</strong>,
+                                Hello there,
                             </p>
 
                             <p style="font-size: 16px; color: #2d3748; margin: 0 0 28px; line-height: 1.6;">
-                                Your case has been approved by your lawyer. Please join the meeting at the scheduled
-                                time.
+                                Thank you for signing up with <strong>Hotline.lk</strong>! To complete your registration
+                                and activate your account, please verify your email address by clicking the button
+                                below.
                             </p>
 
-                            <!-- MEETING DETAILS BOX -->
-                            <p
-                                style="margin: 0 0 12px; color: #4a5568; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">
-                                Meeting Details:</p>
-
+                            <!-- VERIFY BUTTON -->
                             <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
-                                style="margin-bottom: 30px; background-color: #eff6ff; border-radius: 8px; overflow: hidden; border-left: 4px solid #3b82f6;">
-                                <tr>
-                                    <td style="padding: 20px 24px;">
-                                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-                                            <tr>
-                                                <td style="padding-bottom: 12px;">
-                                                    <span
-                                                        style="color: #64748b; font-size: 14px; display: block; margin-bottom: 4px;">📅
-                                                        Date:</span>
-                                                    <span
-                                                        style="color: #1e293b; font-size: 16px; font-weight: 600;">{{ \Carbon\Carbon::parse($meeting->meeting_date)->format('F j, Y') }}</span>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td style="padding-bottom: 12px;">
-                                                    <span
-                                                        style="color: #64748b; font-size: 14px; display: block; margin-bottom: 4px;">🕐
-                                                        Time:</span>
-                                                    <span
-                                                        style="color: #1e293b; font-size: 16px; font-weight: 600;">{{ \Carbon\Carbon::parse($meeting->meeting_time)->format('g:i A') }}</span>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td>
-                                                    <span
-                                                        style="color: #64748b; font-size: 14px; display: block; margin-bottom: 4px;">👤
-                                                        Lawyer:</span>
-                                                    <span
-                                                        style="color: #1e293b; font-size: 16px; font-weight: 600;">{{ $meeting->lawyer->name ?? 'Your Lawyer' }}</span>
-                                                </td>
-                                            </tr>
-                                        </table>
-                                    </td>
-                                </tr>
-                            </table>
-
-                            <!-- JOIN BUTTON -->
-                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
-                                style="margin-bottom: 25px;">
+                                style="margin-bottom: 28px;">
                                 <tr>
                                     <td style="text-align: center;">
-                                        <a href="{{ $meeting->zoom_link }}" target="_blank"
-                                            style="display: inline-block; background: linear-gradient(135deg, #c41019 0%, #a00d15 100%); color: #ffffff; text-decoration: none; padding: 14px 40px; border-radius: 8px; font-size: 16px; font-weight: 600; box-shadow: 0 4px 12px rgba(196, 16, 25, 0.3);">
-                                            Join Meeting Now
+                                        <a href="{{ $url }}"
+                                            style="display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #c41019 0%, #a00d15 100%); color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: 600; letter-spacing: 0.5px; box-shadow: 0 4px 12px rgba(196, 16, 25, 0.3); transition: all 0.3s ease;">
+                                            Verify Email Address
                                         </a>
                                     </td>
                                 </tr>
                             </table>
 
-                            <!-- INFO BOX -->
+                            <!-- ALTERNATIVE LINK BOX -->
                             <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
-                                style="margin-bottom: 20px;">
+                                style="margin-bottom: 25px;">
                                 <tr>
                                     <td
-                                        style="background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 16px 20px; border-radius: 6px;">
-                                        <p style="margin: 0; color: #92400e; font-size: 14px; line-height: 1.6;">
-                                            <strong>Need to reschedule?</strong> Please reply to this email and we'll
-                                            assist you.
+                                        style="background-color: #f7fafc; padding: 20px 24px; border-radius: 8px; border: 1px solid #e2e8f0;">
+                                        <p
+                                            style="margin: 0 0 10px; color: #4a5568; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">
+                                            Alternative Link:
+                                        </p>
+                                        <p style="margin: 0; color: #718096; font-size: 13px; line-height: 1.6;">
+                                            If the button doesn't work, copy and paste this link into your browser:
+                                        </p>
+                                        <p style="margin: 10px 0 0; word-break: break-all;">
+                                            <a href="{{ $url }}"
+                                                style="color: #c41019; text-decoration: none; font-size: 13px;">{{ $url }}</a>
                                         </p>
                                     </td>
                                 </tr>
                             </table>
 
-                            <!-- MEETING LINK -->
-                            <p style="margin: 0; color: #64748b; font-size: 13px; line-height: 1.6;">
-                                Meeting Link: <a href="{{ $meeting->zoom_link }}"
-                                    style="color: #c41019; text-decoration: none; word-break: break-all;">{{ $meeting->zoom_link }}</a>
-                            </p>
+                            <!-- EXPIRY INFO -->
+                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                                <tr>
+                                    <td
+                                        style="background-color: #eff6ff; border-left: 4px solid #3b82f6; padding: 16px 20px; border-radius: 6px;">
+                                        <p style="margin: 0; color: #1e40af; font-size: 14px; line-height: 1.6;">
+                                            <strong>⏱️ Important:</strong> This verification link will expire in 60
+                                            minutes for security purposes.
+                                        </p>
+                                    </td>
+                                </tr>
+                            </table>
 
                         </td>
                     </tr>
@@ -177,7 +150,7 @@
                         <td
                             style="background: #fafafa; padding: 28px 40px; text-align: center; border-top: 1px solid #e5e7eb;">
                             <p style="margin: 0; font-size: 13px; color: #6b7280; line-height: 1.5;">
-                                We look forward to your meeting. See you there!
+                                This is an automated email. Please do not reply to this message.
                             </p>
                             <p style="margin: 8px 0 0; font-size: 12px; color: #9ca3af;">
                                 Hotline.lk · All Rights Reserved
