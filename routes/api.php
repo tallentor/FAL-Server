@@ -102,8 +102,8 @@ Route::post('/chat/send', [ChatController::class, 'sendMessage']);
 // Route::apiResource('lawyer_profiles', LawyerProfileController::class);
 
 Route::get('/lawyer_profiles',[LawyerProfileController::class , 'index']);
-Route::post('/lawyer_profiles',[LawyerProfileController::class , 'store']);
-Route::put('/lawyer-profile/{id}', [LawyerProfileController::class, 'update']);
+Route::post('/lawyer_profiles',[LawyerProfileController::class , 'store'])->middleware(['auth:sanctum']);
+Route::put('/lawyer-profile/update/{id}', [LawyerProfileController::class, 'update'])->middleware(['auth:sanctum']);
 Route::get('/lawyer/{user}',[LawyerProfileController::class , 'getLawyerByUser']);
 Route::get('/lawyer/data/all',[LawyerProfileController::class , 'getLawyerData']);
 
@@ -196,12 +196,6 @@ Route::middleware(['auth:sanctum', 'last_activity'])->get('/lawyers', [LawyerPro
 
 Route::get('/active-lawyers', [ActiveLawyerController::class, 'getActiveLawyers']);
 
-
-
-Route::get('/test-pusher', function () {
-    event(new TestPusherEvent('Hello from Laravel backend!'));
-    return response()->json(['success' => true, 'message' => 'Event sent to Pusher']);
-});
 
 
 

@@ -162,8 +162,8 @@ public function storeAppointment(Request $request)
     // ------------------------------
     // ▶️ Send Email Notification
     // ------------------------------
-    Mail::to($appointment->lawyer->email)
-        ->send(new LawyerAppointmentNotification($appointment));
+    //Mail::to($appointment->lawyer->email)
+    //    ->send(new LawyerAppointmentNotification($appointment));
 
     // ------------------------------
     // ▶️ Send SMS to Lawyer
@@ -238,6 +238,37 @@ public function storeAppointment(Request $request)
         ], 200);
     }
 
+
+    //get specific lawyer appointment payment status is confirmed 
+    public function getMyAppointments1()
+{
+    $lawyer = Auth::user();
+
+    // Optional: check if user is lawyer
+    if ($lawyer->role !== 1) {
+        return response()->json([
+            'error' => 'Access denied. Only lawyers can view their appointments.'
+        ], 403);
+    }
+
+    // Fetch appointments ONLY where payment is confirmed
+    $appointments = Appointment::where('lawyer_id', $lawyer->id)
+        ->where('payment_status', 'confirmed')   // <-- ADD FILTER HERE
+        ->with('user')  // Include client info
+        ->orderBy('appointment_date', 'asc')
+        ->get();
+
+    if ($appointments->isEmpty()) {
+        return response()->json([
+            'message' => 'No confirmed appointments found for this lawyer.',
+        ], 404);
+    }
+
+    return response()->json([
+        'message' => 'Confirmed appointments retrieved successfully.',
+        'appointments' => $appointments,
+    ], 200);
+}
 
 
 
