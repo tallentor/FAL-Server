@@ -10,6 +10,8 @@ use App\Models\LawyerProfile;
 use App\Models\AppointmentMeeting;
 use App\Models\LawyersDeleteAccount;
 use Illuminate\Support\Facades\Auth;
+use App\Mail\NewLawyerProfileNotification;
+use Illuminate\Support\Facades\Mail;
 
 class LawyerProfileController extends Controller
 {
@@ -346,6 +348,28 @@ public function store(Request $request)
     // Create the lawyer profile
     $profile = LawyerProfile::create($validated);
 
+    // Send email notifications to all admin users (role = 2)
+    $adminUsers = User::where('role', 2)->get();
+    $lawyerUser = User::find($validated['user_id']);
+
+    foreach ($adminUsers as $admin) {
+        // Skip if email is invalid or empty
+        if (empty($admin->email) || !filter_var($admin->email, FILTER_VALIDATE_EMAIL)) {
+            \Log::warning("Skipping invalid admin email: " . ($admin->email ?? 'null') . " for admin ID: " . $admin->id);
+            continue;
+        }
+
+        try {
+            Mail::to($admin->email)->send(
+                new NewLawyerProfileNotification($admin, $lawyerUser, $validated)
+            );
+        } catch (\Exception $e) {
+            // Log the error but don't stop the process
+            \Log::error("Failed to send email to admin {$admin->email}: " . $e->getMessage());
+            continue;
+        }
+    }
+
     return response()->json([
         'success' => true,
         'message' => 'Lawyer profile created successfully',
@@ -578,7 +602,7 @@ public function getZoomLink(Request $request, $appointment_id)
 public function getPendingProfiles()
 {
     // Fetch lawyer profiles with status 'pending'
-    $pendingProfiles = LawyerProfile::where('status', 'pending')
+    $pendingProfiles = LawyerProfile::with('user')->where('status', 'pending')
         ->get();
 
     return response()->json([
